@@ -75,6 +75,10 @@ DocumentUniqueId=OXRPWJIS
 DocumentPath=Project Outputs for Rocket logger\Board Information - PCB.html
 DItemRevisionGUID=
 
+[GeneratedDocument2]
+DocumentPath=Project Outputs for Rocket logger\Design Rule Check - PCB.html
+DItemRevisionGUID=
+
 [Configuration1]
 Name=Default Configuration
 ParameterCount=0
