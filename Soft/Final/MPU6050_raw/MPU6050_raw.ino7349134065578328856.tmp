@@ -1,0 +1,107 @@
+#include <Wire.h>
+#include "MPU6050.h"
+
+#define mpuInterruptPin 2
+
+void mpu6050Init (void);
+void mpuDataReadyIRQ (void);
+
+MPU6050 accelgyro;
+
+volatile uint16_t counter = 0;
+volatile uint32_t prevMillis = 0; 
+
+void setup() {
+    Wire.begin();
+    Serial.begin(250000);
+    Serial.println("Power up");
+    
+    mpu6050Init();
+    interrupts();
+}
+
+void mpu6050Init (void)
+{
+  
+  accelgyro.initialize();
+  accelgyro.setDLPFMode(1);           //set low-pass filter for gyro and acc 188Hz (maximum)
+  accelgyro.setRate(0);               //set 1kHz for acelerometer
+  accelgyro.setInterruptMode(1);      //set interrupt active low
+  accelgyro.setInterruptDrive(MPU6050_INTDRV_PUSHPULL);   //set interrupt output to push-pull
+  accelgyro.setInterruptLatch(MPU6050_INTLATCH_50USPULSE);      //set interrupt only for 50us
+  accelgyro.setInterruptLatchClear(true);             //clear interrupt register at any read operation
+  accelgyro.setIntMotionEnabled(false);               //disable motion interrupt
+  accelgyro.setIntZeroMotionEnabled(false);           //disable zero gravity interrupt
+  accelgyro.setIntDataReadyEnabled(true);             //ENABLE data ready interrupt
+  accelgyro.setIntI2CMasterEnabled(false);            //disable i2c interrupt
+  accelgyro.setIntFIFOBufferOverflowEnabled(false);   //disable FIFO overflow interrupt
+  accelgyro.setFIFOEnabled(false);                    //disable FIFO, totaly
+  accelgyro.setI2CMasterModeEnabled(false);           //disable i2c master
+  Serial.println("Testing device connections...");
+  Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");
+  
+  noInterrupts();
+  pinMode(mpuInterruptPin, INPUT); //mpu interrupt init
+  attachInterrupt(0, mpuDataReadyIRQ, FALLING);
+  
+}
+
+int32_t quadAX, quadAY, quadAZ;
+
+
+
+void loop() {  
+  Serial.println("Doing nothing...");
+  delay(1000);
+  if (counter >= 1000)
+  {
+    uint64_t currentMillis = millis();
+    Serial.print("Counter:");
+    Serial.print(counter);
+    Serial.print("\t");
+    Serial.print("MIllis diff");
+    Serial.println(prevMillis - currentMillis);
+     
+    prevMillis = currentMillis;
+    counter = 0;
+  }
+  
+  //accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+  
+/*
+  quadAX = pow(ax, 2);
+  quadAY = pow(ay, 2);
+  quadAZ = pow(az, 2);
+  vectorLength = sqrt(quadAX + quadAY + quadAZ);
+  
+  Serial.println(vectorLength); 
+      */ 
+ /*
+  Serial.print(ax); Serial.print("\t");
+  Serial.print(ay); Serial.print("\t");
+  Serial.println(az);
+  */
+  
+  
+      //Serial.print(gx); Serial.print("\t");
+      //Serial.print(gy); Serial.print("\t");
+      //Serial.println(gz);
+
+   
+}
+
+void mpuDataReadyIRQ (void)
+{
+  //detachInterrupt(0);
+  //interrupts();
+  //Serial.println("1");
+  int16_t ax, ay, az;
+  int16_t gx, gy, gz;
+  counter++;
+  
+  accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+  //Serial.print(gx); Serial.print("\t");
+  //Serial.print(gy); Serial.print("\t");
+  //Serial.println(gz);
+  //attachInterrupt(0, mpuDataReadyIRQ, FALLING);
+}

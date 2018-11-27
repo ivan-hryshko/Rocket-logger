@@ -1,0 +1,492 @@
+#include <SPI.h>
+#include "SdFat.h"
+#include "FreeStack.h"
+#include "MPU6050.h"
+#include "BMP180.h"
+#include "I2Cdev.h"
+
+#define mpuInterruptPin         2
+#define sdCardCSpin             8
+#define batteryMeasurePin       A7
+#define batteryMeasureEnablePin A1
+#define camRecPin               3
+#define camOnPin                4
+#define ledPin                  5
+#define paraPin                 7
+#define paraChekPin             6
+#define enginePin               A2
+#define engineChekPin           A0
+#define buzzerPin               A3
+#define nrfCSpin                9
+#define nrfCEpin                10
+
+const char fileName [] = "data.bin";
+
+uint8_t batteryLevel;
+
+#define error(s) sd.errorHalt(F(s))
+
+void fusesInit (void);
+void sdCardInit (void);
+void battMeasureInit (void);
+void i2cInit (void);
+void mpu6050Init  (void);
+void bmp180Init  (void);
+void mpuDataReadyIRQ  (void);
+void writeBufferToFile  (void);
+void writeBufferToSDcard  (void);
+void readDataFromMpu (uint8_t * toSend);
+void readDataFromBmp (uint8_t * toSend);
+void writeBatteryLevel  (uint8_t * toSend);
+void writeTimeFromStart (uint8_t * toSend);
+void addToBuffer (uint8_t * toSend);
+void readBatteryLevel   (void);
+void writeMeasuredDataToCard (void);
+void writeMeasureBorders (uint8_t * toSend);
+bool parachuteCheck (void);
+bool engineCheck (void);
+void parachuteFireFuse (void);
+void engineFireFuse (void);
+void engineDisableFuse (void);
+void parachuteDisableFuse (void);
+void beeperInit (void);
+void beeperOn (void);
+void beeperOff  (void);
+void ledInit  (void);
+void ledOn (void);
+void ledOff  (void);
+
+void temp (void);
+void temp1 (void);
+
+
+MPU6050 accelgyro;
+BMP180 bmp180;
+
+SdFat sd;
+SdFile file;
+
+uint8_t * dataBuffer;
+
+void setup()
+{
+    
+    Serial.begin(250000);
+    Serial.println("Power up");
+    
+    //fusesInit();
+    //beeperInit();
+    //ledInit();
+    
+    //temp();
+
+    sdCardInit();
+    battMeasureInit();
+
+    
+    i2cInit();
+    bmp180Init();
+    mpu6050Init();
+    
+    
+    temp1();
+    interrupts();
+}
+
+void temp1 (void)
+{
+  
+}
+
+void temp (void)
+{
+  Serial.println ("");
+  Serial.print ("Parachute state: ");
+  Serial.println (parachuteCheck());
+  Serial.print ("Engine state: ");
+  Serial.println (engineCheck());
+  delay(1000);
+  parachuteFireFuse();
+  delay(1000);
+  parachuteDisableFuse();
+  delay(1000);
+  engineFireFuse();
+  delay(1000);
+  engineDisableFuse();
+  delay(1000);
+  ledOn();
+  delay(100);
+  ledOff();
+}
+
+void beeperInit (void)
+{
+  pinMode(buzzerPin, OUTPUT);
+  beeperOff();
+}
+
+void beeperOn (void)
+{
+  digitalWrite(buzzerPin, HIGH);
+}
+
+void beeperOff (void)
+{
+  digitalWrite(buzzerPin, LOW);
+}
+
+void ledInit  (void)
+{
+  pinMode(ledPin, OUTPUT);
+  ledOff();
+}
+void ledOn (void)
+{
+  digitalWrite(ledPin, HIGH);
+}
+
+void ledOff  (void)
+{
+  digitalWrite(ledPin, LOW);
+}
+
+void fusesInit (void)
+{
+  pinMode(paraChekPin, INPUT);
+  pinMode(engineChekPin, INPUT);
+  
+  pinMode(paraPin, INPUT);
+  pinMode(enginePin, INPUT);
+}
+
+bool parachuteCheck (void)
+{
+  return (digitalRead(paraChekPin));
+}
+
+bool engineCheck (void)
+{
+  return (digitalRead(engineChekPin));
+}
+
+void parachuteFireFuse (void)
+{
+  pinMode(paraPin, OUTPUT);
+  digitalWrite(paraPin, HIGH);
+}
+
+void engineFireFuse (void)
+{
+  pinMode(enginePin, OUTPUT);
+  digitalWrite(enginePin, HIGH);
+}
+
+void parachuteDisableFuse (void)
+{
+  digitalWrite(paraPin, LOW);
+  pinMode(paraPin, INPUT);
+}
+
+void engineDisableFuse (void)
+{
+  digitalWrite(enginePin, LOW);
+  pinMode(enginePin, INPUT);
+}
+
+void battMeasureInit (void)
+{
+  pinMode(batteryMeasureEnablePin, OUTPUT);
+  digitalWrite(batteryMeasureEnablePin, LOW);
+  pinMode(batteryMeasurePin, INPUT);
+  analogReference(INTERNAL);
+  readBatteryLevel ();
+}
+
+void sdCardInit (void)
+{
+  uint32_t bgnBlock, endBlock;
+  uint32_t freeSpaceOnCard;
+  
+  Serial.println("Initializing SD card");
+  
+  if (!sd.begin(sdCardCSpin, SPI_FULL_SPEED))
+  {
+    sd.initErrorHalt();
+  }
+  Serial.println("card initialized.");
+  
+  sd.remove(fileName);    //delete in final
+  freeSpaceOnCard = sd.freeClusterCount() * sd.blocksPerCluster() * 512;
+  //freeSpaceOnCard = 16777216;
+  Serial.println(sd.freeClusterCount());
+  if (!file.createContiguous(sd.vwd(), fileName, freeSpaceOnCard))
+  {
+    Serial.println("createContiguous failed");
+  }
+  Serial.println(sd.freeClusterCount());
+  if (!file.contiguousRange(&bgnBlock, &endBlock))
+  {
+    Serial.println("contiguousRange failed");
+  }
+  dataBuffer = (uint8_t*)sd.vol()->cacheClear();
+  
+  if (!sd.card()->writeStart(bgnBlock, freeSpaceOnCard/512))
+  {
+    Serial.println("writeStart failed");
+  }
+  memset(dataBuffer, '-', 512);
+  char startMessage [] = "start! ";
+  memcpy(dataBuffer, startMessage, sizeof(startMessage) - 1);
+  writeBufferToSDcard();
+  
+  Serial.println("end");
+}
+
+void i2cInit (void)
+{
+  Fastwire::setup(400, true);
+}
+
+void mpu6050Init (void)
+{
+  Serial.println("MPU init");
+  accelgyro.initialize();
+  Serial.println("MPU configuring");
+  accelgyro.setDLPFMode(1);           //set low-pass filter for gyro and acc 188Hz (maximum)
+  accelgyro.setRate(1);               //set 500Hz for acelerometer
+  accelgyro.setInterruptMode(1);      //set interrupt active low
+  accelgyro.setInterruptDrive(MPU6050_INTDRV_PUSHPULL);   //set interrupt output to push-pull
+  accelgyro.setInterruptLatch(MPU6050_INTLATCH_50USPULSE);      //set interrupt until clear
+  accelgyro.setInterruptLatchClear(true);             //clear interrupt register at any read operation
+  accelgyro.setIntMotionEnabled(false);               //disable motion interrupt
+  accelgyro.setIntZeroMotionEnabled(false);           //disable zero gravity interrupt
+  accelgyro.setIntDataReadyEnabled(true);             //ENABLE data ready interrupt
+  accelgyro.setIntI2CMasterEnabled(false);            //disable i2c interrupt
+  accelgyro.setIntFIFOBufferOverflowEnabled(false);   //disable FIFO overflow interrupt
+  accelgyro.setFIFOEnabled(false);                    //disable FIFO, totaly
+  accelgyro.setI2CMasterModeEnabled(false);           //disable i2c master
+  Serial.println("Testing device connections...");
+  //delay(5);
+  //Serial.println(accelgyro.getDeviceID());
+  Serial.println(accelgyro.testConnection() ? "MPU6050 OK!" : "MPU6050 connection failed!!!");
+  delay(5);
+  noInterrupts();
+  pinMode(mpuInterruptPin, INPUT); //mpu interrupt init
+  attachInterrupt(0, mpuDataReadyIRQ, FALLING);
+}
+
+void bmp180Init (void)
+{
+  Serial.println("BMP init...");
+  if(bmp180.begin())
+  {
+    Serial.println("success");
+  }
+  else
+  {
+    Serial.println("FAIL!!!");
+    while (true);
+  }
+  memset(dataBuffer, ' ', 512);
+  Fastwire::readBuf(BMP180_ADDR << 1, BMP180_REG_CALIBRATING_REGISTERS_BEGIN_ADDRESS, &dataBuffer[0], CALIBRATING_REGISTERS_SIZE);
+  writeBufferToSDcard();
+  bmp180.startPressure();
+  while (false)
+  {
+    Serial.println(bmp180.readByte(BMP180_REG_CONTROL_ADDRESS));
+  }
+}
+
+const uint8_t accSize = 2;
+const uint8_t mpuTempSize = 2;
+const uint8_t gyroSize = 2;
+const uint8_t mpuDataSize = 3*accSize + 3*gyroSize + mpuTempSize;
+const uint8_t bmpTempSize = 2;          //TODO
+const uint8_t pressureSize = 3; 
+const uint8_t bmpDataSize = bmpTempSize + pressureSize;
+const uint8_t millisSize = 4;
+const uint8_t batteryChargeSize = 1;
+const uint8_t fusesStateSize = 1;
+const uint8_t radioStateSize = 1;
+const uint8_t measureNumSize = 4;
+const uint8_t endSize = 1;
+const uint8_t singleMeasureSize = 32;
+
+const uint16_t batteryReadPeriod = 500;
+
+int16_t ax, ay, az;
+int16_t gx, gy, gz;
+uint32_t measureNum = 0;
+uint8_t toSend [singleMeasureSize];
+
+volatile bool newMpuDataReady = false;
+volatile bool newTask = false;
+
+uint8_t bufferOffset = 0;
+bool bufferFull = false;
+
+const uint8_t queueSize = 1;
+uint8_t queueBuffer [singleMeasureSize * queueSize];
+bool queueBufferUsed = false;
+
+void mpuDataReadyIRQ (void)
+{  
+  newMpuDataReady = true;
+  newTask = true;
+  measureNum++;
+}
+
+uint32_t lastBatteryReadTime = 0;
+
+void loop() {
+  if (newTask)
+  {
+    //uint32_t microsec = micros();
+    if (bufferFull)
+    {
+      writeMeasuredDataToCard ();
+      if (!newMpuDataReady)
+      {
+        newTask = false;
+      }
+      //Serial.print ('w');
+    }
+    else if (newMpuDataReady)
+    {
+      newTask = false;
+      readDataFromMpu (toSend);
+      readDataFromBmp (toSend);
+      writeTimeFromStart (toSend);
+      writeBatteryLevel (toSend);
+      writeMeasureBorders (toSend);
+      
+      addToBuffer (toSend);
+    }
+    //microsec = micros() - microsec;
+    //Serial.println(microsec);
+  }
+  else    //free time
+  {
+    //Serial.print ('f');
+    if ((millis() - lastBatteryReadTime) > batteryReadPeriod)
+    {
+      lastBatteryReadTime = millis();
+      readBatteryLevel ();
+    }
+  }
+}
+
+void writeMeasureBorders (uint8_t * toSend)
+{
+  toSend[0] = '[';
+  memcpy(&toSend [27], &measureNum, measureNumSize);
+  toSend[31] = ']';
+}
+
+void readDataFromMpu (uint8_t * toSend)
+{  
+  byte returned = Fastwire::readBuf(MPU6050_DEFAULT_ADDRESS << 1, MPU6050_RA_ACCEL_XOUT_H, &toSend[1], mpuDataSize);  
+  newMpuDataReady = false;
+}
+
+#define MEASURE_TEMP_INTERVAL 10
+uint8_t measureBmpNum = 0;
+
+void readDataFromBmp (uint8_t * toSend)
+{
+ 
+  memset(&toSend[15], 0x01, bmpDataSize);
+  if(bmp180.checkDataReady())
+  {
+    //Serial.println('b');
+    measureBmpNum++;
+    if (measureBmpNum >= MEASURE_TEMP_INTERVAL)
+    { 
+      
+      memcpy(&toSend[15], bmp180.getTemperature(), bmpTempSize);
+      measureBmpNum = 0;
+      bmp180.startPressure();
+    }
+    else
+    {
+      uint8_t * pointer = bmp180.getPressure();
+      uint32_t pressure = *pointer + *(pointer + 1) << 8 +  *(pointer + 2) << 16;
+      Serial.print(*pointer, HEX);
+      Serial.print(*(pointer + 1), HEX);
+      Serial.println(*(pointer + 2), HEX);
+      //memcpy(&toSend[17], bmp180.getPressure(), pressureSize);
+      if (measureBmpNum == (MEASURE_TEMP_INTERVAL - 1))
+      {
+        bmp180.startTemperature();
+      }
+      else
+      {
+        bmp180.startPressure();
+      }
+    }
+  }
+}
+
+void writeTimeFromStart (uint8_t * toSend)
+{
+  uint32_t milisec = millis();
+  memcpy(&toSend [20], &milisec, millisSize);
+}
+
+void writeBatteryLevel (uint8_t * toSend)
+{
+  toSend [24] = batteryLevel;
+}
+
+void readBatteryLevel (void)
+{
+  batteryLevel = analogRead(batteryMeasurePin) >> 2;
+  Serial.print("bat=");
+  Serial.println(batteryLevel);
+}
+
+void addToBuffer (uint8_t * toSend)
+{
+  if (!bufferFull)
+  {
+    if (queueBufferUsed)
+    {
+      memcpy(dataBuffer, queueBuffer, bufferOffset * singleMeasureSize);
+      queueBufferUsed = false;
+    }
+    memcpy(&dataBuffer [bufferOffset * singleMeasureSize], toSend, singleMeasureSize);
+  }
+  else
+  {
+    if (bufferOffset > queueSize)
+    {
+      Serial.println("queueBuffer overloaded!!!!");
+      while(true)
+      {}
+    }
+    queueBufferUsed = true;
+    memcpy(&queueBuffer [bufferOffset * singleMeasureSize], toSend, singleMeasureSize);
+  }
+
+  bufferOffset++;
+  if (bufferOffset > 15)
+  {
+    bufferOffset = 0;
+    bufferFull = true;
+    newTask = true;
+  }
+}
+
+void writeMeasuredDataToCard (void)
+{
+  writeBufferToSDcard();
+  bufferFull = false;
+}
+
+void writeBufferToSDcard  (void)
+{
+  if (!sd.card()->writeData(dataBuffer))
+  {
+    Serial.println("writeData failed");
+  }
+}

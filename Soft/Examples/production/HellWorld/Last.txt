@@ -1,0 +1,300 @@
+import java.io.*;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.Path;
+
+
+import static java.lang.Integer.BYTES;
+import static java.lang.Integer.getInteger;
+import static java.lang.Integer.parseInt;
+
+public class HexTranslate {
+    private static List<String> hexs = new ArrayList<String>();
+    private static List<Character> chars = new ArrayList<Character>();
+    private static List<String> hexs_sort = new ArrayList<>();
+    private static List<String> ValuesList = new ArrayList<>();
+    private static ArrayList<Integer> ValuesFinal = new ArrayList<>();
+    private static String [][] HexVal;
+
+
+    public static void main(String[] args) {
+
+        try {
+            //Получить массив байтов и разделить его на двумерный размером [Х:19]
+           HexVal = getByteArray("log1.bin");
+           //Вывести двумерный на экран
+            outHexList(HexVal);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+
+        String some =  HexVal[0][0].substring(0, 1);
+        System.out.println(  some);
+
+
+        HexVal = HexCutMetode(HexVal);
+        outHexList(HexVal);
+        System.out.println();
+
+        outHexList(ConvertToDec(HexVal));
+
+
+
+
+
+//        for(String s : hexs){
+//        ValuesFinal.add(            Integer.parseUnsignedInt(s, 16));
+//        }
+
+        outList(ValuesFinal);
+        int y = (int) Long.parseLong("80000000", 16);
+        System.out.println(y);
+        System.out.println();
+        //int x =Integer.toHexString("FFFF");
+        //System.out.println(x);
+
+
+        //Проверяем что считало
+        System.out.println(hexs.toString());
+/*
+        //Делим полученный массив цифр на секции и 4х цифр - т.е. 4 бита
+        String Buffer = "";
+        for (int i = 0, j=1; i <chars.size() ; i++, j++) {
+            Buffer += String.valueOf(chars.get(i));
+            if (j%4==0){
+                ValuesList.add(Buffer);
+                Buffer ="";
+            }
+        }
+        */
+//
+//        //Проверяем разеделение
+//        System.out.println(ValuesList.toString());
+//
+//        //Переводим каждое значение из 16ной системы в 10-ную
+//        for (String Val : ValuesList) {
+//            Values.add(Integer.parseInt(Val, 16));
+//
+//        }
+//        //Проверяем
+//        System.out.println(Values.toString());
+/*
+
+        //Записываем в файл посторочно из 8 значений
+        Buffer = "";
+        int j =0;
+        try (FileWriter writer = new FileWriter("d:/Test.csv", false)) {
+            // запись всей строки
+            for( int Val : Values){
+                Buffer += Val;
+                Buffer += ";";
+                j++;
+                if(j%8==0){
+                    Buffer +="\n";
+                    writer.write(Buffer);
+                    Buffer="";
+                }
+            }
+
+
+            //writer.append('\n');
+
+            writer.flush();
+        }
+        catch(IOException ex){
+
+            System.out.println(ex.getMessage());
+        }
+    }
+*/
+
+
+    }
+
+
+
+    private static int[][] ConvertToDec(String[][] hexVal) {
+        int [][] newHex = new int [hexVal.length][hexVal[0].length];
+        for (int k = 0; k <hexVal.length ; k++) {
+            for (int j = 0; j < hexVal[0].length-1; j++) {
+                newHex[k][j] = (int)Long.parseLong(hexVal[k][j], 16);
+            }
+        }
+        return newHex;
+    }
+
+
+
+
+//
+//    private static List<String> openFile(String s) {
+//        ArrayList<String > list = new ArrayList<String>();
+//        BufferedReader reader = null;
+//        try {
+//            reader = new BufferedReader(new FileReader(new File(s)));
+//
+//            String c;
+//            while ((c = reader.read()) != -1) {
+//                list.add(Integer.toHexString(c));
+//            }
+//            reader.close();
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        } finally {
+//            if (reader != null) {
+//                try {
+//                    reader.close();
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//        }
+//        return list;
+//    }
+
+
+
+    private static String[][] getByteArray(String s) throws IOException {
+        Path path = Paths.get(s);
+
+            byte[] data = Files.readAllBytes(path);
+
+            String [][] HexVal = new String [(data.length)/19][19];
+
+            int j = -1;
+            int k = 0;
+
+        for (int i = 0; i <data.length ; i++) {
+            if(i%19==0&&i!=0){
+                j=0;
+                k++;
+            }
+            else {
+                j++;
+
+            }
+            HexVal[k][j] = Integer.toHexString(data[i]);
+
+
+        }
+
+        return HexVal;
+    }
+
+
+    private static String[] cutByteArray(String [] array) throws IOException {
+
+            for ( String s : array){
+                if(s.length()==8){
+                    s = s.substring(4,7);
+                }
+            }
+
+
+
+        return array;
+    }
+
+
+
+    private static String [][] HexCutMetode(String [] [] list) {
+        String [] [] newlist = new String[list.length][10];
+        String s= "";
+        String second = "";
+        for (int k=0; k<list.length;k++){
+            for (int j = 0; j < 17; j+=2) {
+
+                if(list[k][j].length()==8)
+                    newlist[k][j/2]=list[k][j].substring(6,8);
+                else if(list[k][j].length()==1) {
+                    newlist[k][j/2]="0"+list[k][j];
+                }
+                else {
+                    newlist[k][j/2]=list[k][j];
+
+                }
+
+
+                if(list[k][j+1].length()==8){
+                    newlist[k][j/2]+=list[k][j+1].substring(6,8);
+                }
+                else if(list[k][j+1].length()==1){
+                    newlist[k][j / 2] += "0"+list[k][j + 1];
+                }
+                else {
+                    newlist[k][j / 2] +=list[k][j + 1];
+                }
+
+
+                if(list[k][j].substring(0,1).equals("f")){
+                    newlist[k][j / 2] = "FFFF"+newlist[k][j / 2];
+                }
+                else {
+                    newlist[k][j / 2] = "0000"+newlist[k][j / 2];
+                }
+
+
+
+            }
+        }
+        return newlist;
+    }
+
+
+
+    public static ArrayList<String> addHex () {
+        ArrayList<String> list = new ArrayList<>();
+        list.add("8001");
+        list.add("FFFE");
+        list.add("8000");
+        list.add("FFFF");
+        list.add("0001");
+        list.add("7FFF");
+        list.add("0000");
+        list.add("7474");
+        list.add("7070");
+        return list;
+    }
+
+    public static void outList (ArrayList<Integer> list){
+        for (Integer x: list){
+            System.out.print(x+", ");
+        }
+        System.out.println();
+    }
+
+    public static void outHexList (String[][] list){
+        for (String[] x : list)
+        {
+            for (String y : x)
+            {
+                System.out.print(y + " ");
+            }
+            System.out.println();
+        }
+    }
+    public static void outHexList (int [][] list){
+        for (int[] x : list)
+        {
+            for (int y : x)
+            {
+                System.out.print(y + " ");
+            }
+            System.out.println();
+        }
+    }
+
+
+
+
+
+
+}
