@@ -3,13 +3,13 @@
 
 void setup()
 {
-	pinMode(PARACHUTE_LAUNCH_FUSE_PIN, OUTPUT);
+	pinMode(BRIGHT_LED_PIN, OUTPUT);
 }
 
 void loop()
 {
-	digitalWrite(PARACHUTE_LAUNCH_FUSE_PIN, HIGH);
+	digitalWrite(BRIGHT_LED_PIN, HIGH);
 	delay(1000);
-	digitalWrite(PARACHUTE_LAUNCH_FUSE_PIN, LOW);
+	digitalWrite(BRIGHT_LED_PIN, LOW);
 	delay(1000);
 }
