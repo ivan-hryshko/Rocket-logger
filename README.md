@@ -1,2 +1,1 @@
-# Test
-Rocket logger project:
+Rocket logger project
