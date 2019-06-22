@@ -1,2 +1,2 @@
 # Test
-Test for Altium
+Rocket logger project
