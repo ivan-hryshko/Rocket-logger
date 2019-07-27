@@ -5,25 +5,27 @@
 #include "MPU9250.h"
 #include "main.h"
 
-MPU9250 IMU(Wire, 0x68);
+TwoWire	i2c_2 (2);
+MPU9250 IMU(i2c_2, 0x68);
 
 void setup()
 {
-	int status;
-
 	Serial.begin();
 	delay(2000);
 	Serial.println("Started");
 	pinMode(BRIGHT_LED_PIN, OUTPUT);
 	initMpu();
+	Serial.println("Init completed");
 }
 
 void loop()
 {
+	/*
 	digitalWrite(BRIGHT_LED_PIN, HIGH);
 	delay(2000);
 	digitalWrite(BRIGHT_LED_PIN, LOW);
 	delay(2000);
+	*/
 	readMpu();
 }
 
@@ -31,15 +33,17 @@ bool initMpu(void)
 {
 	int status;
 
+	Serial.print("MPU init ");
 	status = IMU.begin();
 	if (status < 0)
 	{
-		Serial.println("IMU initialization unsuccessful");
+		Serial.println("unsuccessful");
 		Serial.println("Check IMU wiring or try cycling power");
 		Serial.print("Status: ");
 		Serial.println(status);
 		return (false);
 	}
+	Serial.println("OK");
 	// setting the accelerometer full scale range to +/-8G
 	IMU.setAccelRange(MPU9250::ACCEL_RANGE_16G);
 	// setting the gyroscope full scale range to +/-500 deg/s
@@ -48,7 +52,7 @@ bool initMpu(void)
 	IMU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ);
 	// setting SRD to 19 for a 50 Hz update rate
 	IMU.setSrd(19);
-	Serial.println ("MPU init finished");
+	Serial.println("OK");
 
 	return (true);
 }
