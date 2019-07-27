@@ -1,8 +1,10 @@
-**/History
-**/__Previews
+**/History/
+**/__Previews/
 desktop.ini
 debug.log
 **/Project Logs for Rocket logger
 **/Project Outputs for Rocket logger
 **/.pio/
 **/.vscode/
+Soft/Embedded/Src/STM-logger/.vscode/extensions.json
+Soft/Embedded/Src/STM-logger/.vscode/extensions.json

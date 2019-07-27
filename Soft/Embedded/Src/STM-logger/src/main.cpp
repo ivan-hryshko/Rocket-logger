@@ -4,6 +4,8 @@
 void setup()
 {
 	pinMode(BRIGHT_LED_PIN, OUTPUT);
+	if (true)
+	return;
 }
 
 void loop()
