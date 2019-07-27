@@ -8,3 +8,9 @@ debug.log
 **/.vscode/
 Soft/Embedded/Src/STM-logger/.vscode/extensions.json
 Soft/Embedded/Src/STM-logger/.vscode/extensions.json
+PCB/PCB.err
+PCB/PCB.PcbDoc.htm
+PCB/PCB.step
+PCB/Rocket logger.PrjPcbStructure
+PCB/Shematic for Diplom.pdf
+PCB/Free Documents.OutJob
