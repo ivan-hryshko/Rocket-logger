@@ -4,6 +4,7 @@
 #include "pins.h"
 #include "MPU9250.h"
 #include "main.h"
+#include <sdio.h>
 
 TwoWire	i2c_2 (2);
 MPU9250 IMU(i2c_2, 0x68);
@@ -16,6 +17,7 @@ void setup()
 	pinMode(BRIGHT_LED_PIN, OUTPUT);
 	initMpu();
 	Serial.println("Init completed");
+	sdio_begin();
 }
 
 void loop()
