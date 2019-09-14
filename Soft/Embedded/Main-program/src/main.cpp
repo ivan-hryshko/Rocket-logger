@@ -4,10 +4,16 @@
 #include "pins.h"
 #include "MPU9250.h"
 #include "main.h"
-#include <sdio.h>
+//#define USE_DEBUG_MODE
+//#include <SdioF1.h>
+#include <STM32SD.h>
 
-TwoWire	i2c_2 (2);
+TwoWire i2c_2(2);
 MPU9250 IMU(i2c_2, 0x68);
+
+Sd2Card card;
+SdFatFs fatFs;
+
 
 void setup()
 {
@@ -16,12 +22,13 @@ void setup()
 	Serial.println("Started");
 	pinMode(BRIGHT_LED_PIN, OUTPUT);
 	initMpu();
-	Serial.println("Init completed");
-	sdio_begin();
+	initSdio();
+	Serial.println("Init completed" + F_CPU );
 }
 
 void loop()
 {
+	
 	/*
 	digitalWrite(BRIGHT_LED_PIN, HIGH);
 	delay(2000);
@@ -29,6 +36,13 @@ void loop()
 	delay(2000);
 	*/
 	readMpu();
+}
+
+void initSdio(void)
+{
+	Serial.print("SDIO init ");
+	//initSDHC();
+	//sdio_begin();
 }
 
 bool initMpu(void)
