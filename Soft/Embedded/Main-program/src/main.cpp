@@ -62,7 +62,7 @@ void cidDmp()
 	cout << endl;
 }
 
-void yield() {}
+//void yield() {}
 
 void sdLoop(void)
 {
@@ -72,18 +72,16 @@ void sdLoop(void)
 	uint32_t minLatency;
 	uint32_t totalLatency;
 
-	// Discard any input.
 	do
 	{
 		delay(10);
 	} while (Serial.available() && Serial.read() >= 0);
 
-	// F( stores strings in flash to save RAM
 	cout << F("Type any character to start\n");
-	while (!Serial.available())
-	{
-		SysCall::yield();
-	}
+	//while (!Serial.available())
+	//{
+	//	SysCall::yield();
+	//}
 	//cout << F("chipSelect: ") << int(chipSelect) << endl;
 	//cout << F("FreeStack: ") << FreeStack() << endl;
 
@@ -208,8 +206,8 @@ void sdLoop(void)
 
 void setup()
 {
-	Serial.begin();
-	delay(2000);
+	Serial.begin(115200);
+	delay(5000);
 	Serial.println("Started");
 	pinMode(BRIGHT_LED_PIN, OUTPUT);
 	initMpu();
