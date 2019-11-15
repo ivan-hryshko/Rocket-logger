@@ -72,11 +72,6 @@ void sdLoop(void)
 	uint32_t minLatency;
 	uint32_t totalLatency;
 
-	do
-	{
-		delay(10);
-	} while (Serial.available() && Serial.read() >= 0);
-
 	cout << F("Type any character to start\n");
 	//while (!Serial.available())
 	//{
@@ -201,6 +196,11 @@ void sdLoop(void)
 		cout << endl
 			 << F("Done") << endl;
 		file.close();
+	}
+	else
+	{
+		Serial.println("SD init failed");
+		while (true);
 	}
 }
 
