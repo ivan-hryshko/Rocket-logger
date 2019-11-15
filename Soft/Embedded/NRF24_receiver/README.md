@@ -1,3 +1,5 @@
+Baud rate: 115200
+
 ## Data example:  
 ```
 Acc:16.81
