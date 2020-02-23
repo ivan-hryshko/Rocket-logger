@@ -97,54 +97,106 @@ DocumentPath=Project Outputs for Rocket logger\Design Rule Check - PCB.html
 DItemRevisionGUID=
 
 [GeneratedDocument3]
-DocumentPath=Project Outputs for Rocket logger\PCB.DRR
+DocumentPath=Project Outputs for Rocket logger\panel.DRR
 DItemRevisionGUID=
 
 [GeneratedDocument4]
-DocumentPath=Project Outputs for Rocket logger\PCB.EXTREP
+DocumentPath=Project Outputs for Rocket logger\panel.EXTREP
 DItemRevisionGUID=
 
 [GeneratedDocument5]
-DocumentPath=Project Outputs for Rocket logger\PCB.GBL
+DocumentPath=Project Outputs for Rocket logger\panel.GBL
 DItemRevisionGUID=
 
 [GeneratedDocument6]
-DocumentPath=Project Outputs for Rocket logger\PCB.GBO
+DocumentPath=Project Outputs for Rocket logger\panel.GBO
 DItemRevisionGUID=
 
 [GeneratedDocument7]
-DocumentPath=Project Outputs for Rocket logger\PCB.GBS
+DocumentPath=Project Outputs for Rocket logger\panel.GBS
 DItemRevisionGUID=
 
 [GeneratedDocument8]
-DocumentPath=Project Outputs for Rocket logger\PCB.GM2
+DocumentPath=Project Outputs for Rocket logger\panel.GM2
 DItemRevisionGUID=
 
 [GeneratedDocument9]
-DocumentPath=Project Outputs for Rocket logger\PCB.GTL
+DocumentPath=Project Outputs for Rocket logger\panel.GTL
 DItemRevisionGUID=
 
 [GeneratedDocument10]
-DocumentPath=Project Outputs for Rocket logger\PCB.GTO
+DocumentPath=Project Outputs for Rocket logger\panel.GTO
 DItemRevisionGUID=
 
 [GeneratedDocument11]
-DocumentPath=Project Outputs for Rocket logger\PCB.GTS
+DocumentPath=Project Outputs for Rocket logger\panel.GTS
 DItemRevisionGUID=
 
 [GeneratedDocument12]
-DocumentPath=Project Outputs for Rocket logger\PCB.LDP
+DocumentPath=Project Outputs for Rocket logger\panel.LDP
 DItemRevisionGUID=
 
 [GeneratedDocument13]
-DocumentPath=Project Outputs for Rocket logger\PCB.REP
+DocumentPath=Project Outputs for Rocket logger\panel.REP
 DItemRevisionGUID=
 
 [GeneratedDocument14]
-DocumentPath=Project Outputs for Rocket logger\PCB.RUL
+DocumentPath=Project Outputs for Rocket logger\panel.RUL
 DItemRevisionGUID=
 
 [GeneratedDocument15]
+DocumentPath=Project Outputs for Rocket logger\panel.TXT
+DItemRevisionGUID=
+
+[GeneratedDocument16]
+DocumentPath=Project Outputs for Rocket logger\PCB.DRR
+DItemRevisionGUID=
+
+[GeneratedDocument17]
+DocumentPath=Project Outputs for Rocket logger\PCB.EXTREP
+DItemRevisionGUID=
+
+[GeneratedDocument18]
+DocumentPath=Project Outputs for Rocket logger\PCB.GBL
+DItemRevisionGUID=
+
+[GeneratedDocument19]
+DocumentPath=Project Outputs for Rocket logger\PCB.GBO
+DItemRevisionGUID=
+
+[GeneratedDocument20]
+DocumentPath=Project Outputs for Rocket logger\PCB.GBS
+DItemRevisionGUID=
+
+[GeneratedDocument21]
+DocumentPath=Project Outputs for Rocket logger\PCB.GM2
+DItemRevisionGUID=
+
+[GeneratedDocument22]
+DocumentPath=Project Outputs for Rocket logger\PCB.GTL
+DItemRevisionGUID=
+
+[GeneratedDocument23]
+DocumentPath=Project Outputs for Rocket logger\PCB.GTO
+DItemRevisionGUID=
+
+[GeneratedDocument24]
+DocumentPath=Project Outputs for Rocket logger\PCB.GTS
+DItemRevisionGUID=
+
+[GeneratedDocument25]
+DocumentPath=Project Outputs for Rocket logger\PCB.LDP
+DItemRevisionGUID=
+
+[GeneratedDocument26]
+DocumentPath=Project Outputs for Rocket logger\PCB.REP
+DItemRevisionGUID=
+
+[GeneratedDocument27]
+DocumentPath=Project Outputs for Rocket logger\PCB.RUL
+DItemRevisionGUID=
+
+[GeneratedDocument28]
 DocumentPath=Project Outputs for Rocket logger\PCB.TXT
 DItemRevisionGUID=
 
