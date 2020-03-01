@@ -73,20 +73,17 @@ void sdLoop(void)
 	uint32_t totalLatency;
 
 	cout << F("Type any character to start\n");
-	//while (!Serial.available())
-	//{
-	//	SysCall::yield();
-	//}
+	while (!Serial.available())
+	{
+		SysCall::yield();
+	}
 	//cout << F("chipSelect: ") << int(chipSelect) << endl;
 	//cout << F("FreeStack: ") << FreeStack() << endl;
 
-	if (!sd.begin())
+	if (sd.begin())
 	{
-		sd.initErrorHalt();
-
 		cout << F("Type is FAT") << int(sd.vol()->fatType()) << endl;
-		cout << F("Card size: ") << sd.card()->cardSize() * 512E-9;
-		cout << F(" GB (GB = 1E9 bytes)") << endl;
+		cout << F("Card size: ") << ((float)(sd.card()->cardSize())/(1<<30)) << "GB" << endl;
 
 		cidDmp();
 
@@ -200,14 +197,14 @@ void sdLoop(void)
 	else
 	{
 		Serial.println("SD init failed");
-		while (true);
+		sd.initErrorHalt();
 	}
 }
 
 void setup()
 {
 	Serial.begin(115200);
-	//delay(5000);
+	delay(5000);
 	Serial.println("Started");
 	pinMode(BRIGHT_LED_PIN, OUTPUT);
 	initMpu();
@@ -242,7 +239,7 @@ bool initMpu(void)
 		return (false);
 	}
 	Serial.println("OK");
-	// setting the accelerometer full scale range to +/-8G
+	// setting the accelerometer full scale range to +/-16G
 	IMU.setAccelRange(MPU9250::ACCEL_RANGE_16G);
 	// setting the gyroscope full scale range to +/-500 deg/s
 	IMU.setGyroRange(MPU9250::GYRO_RANGE_500DPS);
