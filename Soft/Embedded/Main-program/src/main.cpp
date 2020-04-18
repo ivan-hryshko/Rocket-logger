@@ -28,8 +28,6 @@ const uint8_t READ_COUNT = 2;
 // File size in bytes.
 const uint32_t FILE_SIZE = 1000000UL * FILE_SIZE_MB;
 
-uint8_t buf[BUF_SIZE];
-
 SdFile file;
 
 // Serial output stream
@@ -71,6 +69,8 @@ void sdLoop(void)
 	uint32_t maxLatency;
 	uint32_t minLatency;
 	uint32_t totalLatency;
+	
+	uint8_t buf[BUF_SIZE];
 
 	cout << F("Type any character to start\n");
 	while (!Serial.available())
@@ -83,7 +83,7 @@ void sdLoop(void)
 	if (sd.begin())
 	{
 		cout << F("Type is FAT") << int(sd.vol()->fatType()) << endl;
-		cout << F("Card size: ") << ((float)(sd.card()->cardSize())/(1<<30)) << "GB" << endl;
+		cout << F("Card size: ") << (((float)(sd.card()->cardSize()))/(1<<30)) << "GB" << endl;
 
 		cidDmp();
 
