@@ -18,10 +18,10 @@ const size_t BUF_SIZE = 512;
 const uint32_t FILE_SIZE_MB = 5;
 
 // Write pass count.
-const uint8_t WRITE_COUNT = 2;
+const uint8_t WRITE_COUNT = 1;
 
 // Read pass count.
-const uint8_t READ_COUNT = 2;
+const uint8_t READ_COUNT = 1;
 //==============================================================================
 // End of configuration constants.
 //------------------------------------------------------------------------------
@@ -83,7 +83,7 @@ void sdLoop(void)
 	if (sd.begin())
 	{
 		cout << F("Type is FAT") << int(sd.vol()->fatType()) << endl;
-		cout << F("Card size: ") << (((float)(sd.card()->cardSize()))/(1<<30)) << "GB" << endl;
+		cout << F("Card size: ") << (((float)(sd.card()->cardSize()))/(1<<21)) << "GB" << endl;
 
 		cidDmp();
 
@@ -193,6 +193,7 @@ void sdLoop(void)
 		cout << endl
 			 << F("Done") << endl;
 		file.close();
+		delay(10000);
 	}
 	else
 	{
@@ -203,8 +204,8 @@ void sdLoop(void)
 
 void setup()
 {
-	Serial.begin(115200);
-	delay(5000);
+	Serial.begin(921600);
+	// delay(5000);
 	Serial.println("Started");
 	pinMode(BRIGHT_LED_PIN, OUTPUT);
 	initMpu();
