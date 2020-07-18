@@ -208,7 +208,7 @@ void setup()
 	// delay(5000);
 	Serial.println("Started");
 	pinMode(BRIGHT_LED_PIN, OUTPUT);
-	initMpu();
+	//initMpu();
 	Serial.println("Init completed");
 	//sdio_begin();
 }
@@ -221,7 +221,7 @@ void loop()
 	digitalWrite(BRIGHT_LED_PIN, LOW);
 	delay(2000);
 	*/
-	readMpu();
+	//readMpu();
 	sdLoop();
 }
 

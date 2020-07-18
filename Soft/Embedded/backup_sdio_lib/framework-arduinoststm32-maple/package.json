@@ -1,0 +1,6 @@
+{
+    "description":"Arduino Wiring-based Framework (ST STM32 Core)",
+    "name":"framework-arduinoststm32-maple",
+    "url":"https://github.com/rogerclarkmelbourne/Arduino_STM32",
+    "version":"2.10000.200103"
+}
