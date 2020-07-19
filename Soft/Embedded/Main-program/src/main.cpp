@@ -1,281 +1,89 @@
-#include <Arduino.h>
-#include <Wire.h>
-#include <SPI.h>
-#include "pins.h"
-#include "MPU9250.h"
-#include "main.h"
-#include <SdioF1.h>
+/*
+  SD card test
+ This example shows how use the utility libraries on which the'
+ SD library is based in order to get info about your SD card.
+ Very useful for testing a card when you're not sure whether its working or not.
+  * SD card attached
+ */
+// include the SD library:
+#include <STM32SD.h>
 
-TwoWire i2c_2(2);
-MPU9250 IMU(i2c_2, 0x68);
+// If SD card slot has no detect pin then define it as SD_DETECT_NONE
+// to ignore it. One other option is to call 'card.init()' without parameter.
+#ifndef SD_DETECT_PIN
+#define SD_DETECT_PIN SD_DETECT_NONE
+#endif
 
-SdFatSdio sd;
-
-// Size of read/write.
-const size_t BUF_SIZE = 512;
-
-// File size in MB where MB = 1,000,000 bytes.
-const uint32_t FILE_SIZE_MB = 5;
-
-// Write pass count.
-const uint8_t WRITE_COUNT = 1;
-
-// Read pass count.
-const uint8_t READ_COUNT = 1;
-//==============================================================================
-// End of configuration constants.
-//------------------------------------------------------------------------------
-// File size in bytes.
-const uint32_t FILE_SIZE = 1000000UL * FILE_SIZE_MB;
-
-SdFile file;
-
-// Serial output stream
-ArduinoOutStream cout(Serial);
-//------------------------------------------------------------------------------
-// Store error strings in flash to save RAM.
-#define error(s) sd.errorHalt(F(s))
-//------------------------------------------------------------------------------
-void cidDmp()
-{
-	cid_t cid;
-	if (!sd.card()->readCID(&cid))
-	{
-		error("readCID failed");
-	}
-	cout << F("\nManufacturer ID: ");
-	cout << hex << int(cid.mid) << dec << endl;
-	cout << F("OEM ID: ") << cid.oid[0] << cid.oid[1] << endl;
-	cout << F("Product: ");
-	for (uint8_t i = 0; i < 5; i++)
-	{
-		cout << cid.pnm[i];
-	}
-	cout << F("\nVersion: ");
-	cout << int(cid.prv_n) << '.' << int(cid.prv_m) << endl;
-	cout << F("Serial number: ") << hex << cid.psn << dec << endl;
-	cout << F("Manufacturing date: ");
-	cout << int(cid.mdt_month) << '/';
-	cout << (2000 + cid.mdt_year_low + 10 * cid.mdt_year_high) << endl;
-	cout << endl;
-}
-
-//void yield() {}
-
-void sdLoop(void)
-{
-	float s;
-	uint32_t t;
-	uint32_t maxLatency;
-	uint32_t minLatency;
-	uint32_t totalLatency;
-	
-	uint8_t buf[BUF_SIZE];
-
-	cout << F("Type any character to start\n");
-	while (!Serial.available())
-	{
-		SysCall::yield();
-	}
-	//cout << F("chipSelect: ") << int(chipSelect) << endl;
-	//cout << F("FreeStack: ") << FreeStack() << endl;
-
-	if (sd.begin())
-	{
-		cout << F("Type is FAT") << int(sd.vol()->fatType()) << endl;
-		cout << F("Card size: ") << (((float)(sd.card()->cardSize()))/(1<<21)) << "GB" << endl;
-
-		cidDmp();
-
-		// open or create file - truncate existing file.
-		if (!file.open("bench.dat", O_RDWR | O_CREAT | O_TRUNC))
-		{
-			error("open failed");
-		}
-
-		// fill buf with known data
-		for (size_t i = 0; i < (BUF_SIZE - 2); i++)
-		{
-			buf[i] = 'A' + (i % 26);
-		}
-		buf[BUF_SIZE - 2] = '\r';
-		buf[BUF_SIZE - 1] = '\n';
-
-		cout << F("File size ") << FILE_SIZE_MB << F(" MB\n");
-		cout << F("Buffer size ") << BUF_SIZE << F(" bytes\n");
-		cout << F("Starting write test, please wait.") << endl
-			 << endl;
-
-		// do write test
-		uint32_t n = FILE_SIZE / sizeof(buf);
-		cout << F("write speed and latency") << endl;
-		cout << F("speed,max,min,avg") << endl;
-		cout << F("KB/Sec,usec,usec,usec") << endl;
-		for (uint8_t nTest = 0; nTest < WRITE_COUNT; nTest++)
-		{
-			file.truncate(0);
-			maxLatency = 0;
-			minLatency = 9999999;
-			totalLatency = 0;
-			t = millis();
-			for (uint32_t i = 0; i < n; i++)
-			{
-				uint32_t m = micros();
-				if (file.write(buf, sizeof(buf)) != sizeof(buf))
-				{
-					sd.errorPrint("write failed");
-					file.close();
-					return;
-				}
-				m = micros() - m;
-				if (maxLatency < m)
-				{
-					maxLatency = m;
-				}
-				if (minLatency > m)
-				{
-					minLatency = m;
-				}
-				totalLatency += m;
-			}
-			file.sync();
-			t = millis() - t;
-			s = file.fileSize();
-			cout << s / t << ',' << maxLatency << ',' << minLatency;
-			cout << ',' << totalLatency / n << endl;
-		}
-		cout << endl
-			 << F("Starting read test, please wait.") << endl;
-		cout << endl
-			 << F("read speed and latency") << endl;
-		cout << F("speed,max,min,avg") << endl;
-		cout << F("KB/Sec,usec,usec,usec") << endl;
-
-		// do read test
-		for (uint8_t nTest = 0; nTest < READ_COUNT; nTest++)
-		{
-			file.rewind();
-			maxLatency = 0;
-			minLatency = 9999999;
-			totalLatency = 0;
-			t = millis();
-			for (uint32_t i = 0; i < n; i++)
-			{
-				buf[BUF_SIZE - 1] = 0;
-				uint32_t m = micros();
-				int32_t nr = file.read(buf, sizeof(buf));
-				if (nr != sizeof(buf))
-				{
-					sd.errorPrint("read failed");
-					file.close();
-					return;
-				}
-				m = micros() - m;
-				if (maxLatency < m)
-				{
-					maxLatency = m;
-				}
-				if (minLatency > m)
-				{
-					minLatency = m;
-				}
-				totalLatency += m;
-				if (buf[BUF_SIZE - 1] != '\n')
-				{
-					error("data check");
-				}
-			}
-			s = file.fileSize();
-			t = millis() - t;
-			cout << s / t << ',' << maxLatency << ',' << minLatency;
-			cout << ',' << totalLatency / n << endl;
-		}
-		cout << endl
-			 << F("Done") << endl;
-		file.close();
-		delay(10000);
-	}
-	else
-	{
-		Serial.println("SD init failed");
-		sd.initErrorHalt();
-	}
-}
+Sd2Card card;
+SdFatFs fatFs;
 
 void setup()
 {
-	Serial.begin(921600);
-	// delay(5000);
-	Serial.println("Started");
-	pinMode(BRIGHT_LED_PIN, OUTPUT);
-	//initMpu();
-	Serial.println("Init completed");
-	//sdio_begin();
+  bool disp = false;
+  // Open serial communications and wait for port to open:
+  Serial.begin(115200);
+
+  while (!Serial);
+  Serial.print("\nInitializing SD card...");
+  while(!card.init(SD_DETECT_PIN)) {
+    if (!disp) {
+      Serial.println("initialization failed. Is a card inserted?");
+      disp = true;
+    }
+    delay(10);
+  }
+
+  Serial.println("A card is present.");
+
+  // print the type of card
+  Serial.print("\nCard type: ");
+  switch (card.type()) {
+    case SD_CARD_TYPE_SD1:
+      Serial.println("SD1");
+      break;
+    case SD_CARD_TYPE_SD2:
+      Serial.println("SD2");
+      break;
+    case SD_CARD_TYPE_SDHC:
+      Serial.println("SDHC");
+      break;
+    default:
+      Serial.println("Unknown");
+  }
+
+  // Now we will try to open the 'volume'/'partition' - it should be FAT16 or FAT32
+  if (!fatFs.init()) {
+    Serial.println("Could not find FAT16/FAT32 partition.\nMake sure you've formatted the card");
+    return;
+  }
+
+  // print the type and size of the first FAT-type volume
+  uint64_t volumesize;
+  Serial.print("\nVolume type is FAT");
+  Serial.println(fatFs.fatType(), DEC);
+  Serial.println();
+
+  volumesize = fatFs.blocksPerCluster();    // clusters are collections of blocks
+  volumesize *= fatFs.clusterCount();       // we'll have a lot of clusters
+  volumesize *= 512;                        // SD card blocks are always 512 bytes
+  Serial.print("Volume size (bytes): ");
+  Serial.println(volumesize);
+  Serial.print("Volume size (Kbytes): ");
+  volumesize /= 1024;
+  Serial.println(volumesize);
+  Serial.print("Volume size (Mbytes): ");
+  volumesize /= 1024;
+  Serial.println(volumesize);
+
+
+  Serial.println("\nFiles found on the card (name, date and size in bytes): ");
+  File root = SD.openRoot();
+
+  // list all files in the card with date and size
+  root.ls(LS_R | LS_DATE | LS_SIZE);
+  Serial.println("###### End of the SD tests ######");
 }
 
-void loop()
-{
-	/*
-	digitalWrite(BRIGHT_LED_PIN, HIGH);
-	delay(2000);
-	digitalWrite(BRIGHT_LED_PIN, LOW);
-	delay(2000);
-	*/
-	//readMpu();
-	sdLoop();
-}
-
-bool initMpu(void)
-{
-	int status;
-
-	Serial.print("MPU init ");
-	status = IMU.begin();
-	if (status < 0)
-	{
-		Serial.println("unsuccessful");
-		Serial.println("Check IMU wiring or try cycling power");
-		Serial.print("Status: ");
-		Serial.println(status);
-		return (false);
-	}
-	Serial.println("OK");
-	// setting the accelerometer full scale range to +/-16G
-	IMU.setAccelRange(MPU9250::ACCEL_RANGE_16G);
-	// setting the gyroscope full scale range to +/-500 deg/s
-	IMU.setGyroRange(MPU9250::GYRO_RANGE_500DPS);
-	// setting DLPF bandwidth to 20 Hz
-	IMU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ);
-	// setting SRD to 19 for a 50 Hz update rate
-	IMU.setSrd(19);
-	Serial.println("OK");
-
-	return (true);
-}
-
-void readMpu(void)
-{
-	IMU.readSensor();
-
-	// display the data
-	Serial.print(IMU.getAccelX_mss(), 6);
-	Serial.print("\t");
-	Serial.print(IMU.getAccelY_mss(), 6);
-	Serial.print("\t");
-	Serial.print(IMU.getAccelZ_mss(), 6);
-	Serial.print("\t");
-	Serial.print(IMU.getGyroX_rads(), 6);
-	Serial.print("\t");
-	Serial.print(IMU.getGyroY_rads(), 6);
-	Serial.print("\t");
-	Serial.print(IMU.getGyroZ_rads(), 6);
-	Serial.print("\t");
-	//Serial.print(IMU.getMagX_uT(), 6);
-	//Serial.print("\t");
-	//Serial.print(IMU.getMagY_uT(), 6);
-	//Serial.print("\t");
-	//Serial.print(IMU.getMagZ_uT(), 6);
-	//Serial.print("\t");
-	Serial.println(IMU.getTemperature_C(), 6);
-	delay(20);
+void loop(void) {
+  // do nothing
 }
