@@ -1,89 +1,102 @@
 /*
-  SD card test
- This example shows how use the utility libraries on which the'
- SD library is based in order to get info about your SD card.
- Very useful for testing a card when you're not sure whether its working or not.
-  * SD card attached
+  SD card datalogger
+ This example shows how to log data from three analog sensors
+ to an SD card using the SD library.
+ The circuit:
+ * analog sensors on analog ins A0, A1, and A2
+ * SD card
  */
-// include the SD library:
-#include <STM32SD.h>
+
+// #include <STM32SD.h>
+#include "Sd2Card.h"
+#include "SdFatFs.h"
+#include "Arduino.h"
+#include <string.h>
+
+#define WRITE_PERIOD_MS 10
+#define FILENAME "test.bin"
 
 // If SD card slot has no detect pin then define it as SD_DETECT_NONE
-// to ignore it. One other option is to call 'card.init()' without parameter.
+// to ignore it. One other option is to call 'SD.begin()' without parameter.
 #ifndef SD_DETECT_PIN
 #define SD_DETECT_PIN SD_DETECT_NONE
 #endif
 
-Sd2Card card;
-SdFatFs fatFs;
-
+SdFatFs _fatFs;
+FIL ff_struct = {};
+FIL *_fil = &ff_struct;
 void setup()
 {
-  bool disp = false;
-  // Open serial communications and wait for port to open:
-  Serial.begin(115200);
-
-  while (!Serial);
-  Serial.print("\nInitializing SD card...");
-  while(!card.init(SD_DETECT_PIN)) {
-    if (!disp) {
-      Serial.println("initialization failed. Is a card inserted?");
-      disp = true;
+    Sd2Card _card;
+    // Open serial communications and wait for port to open:
+    Serial.begin(115200);
+    while (!Serial)
+    {
+        ; // wait for serial port to connect. Needed for Leonardo only
     }
-    delay(10);
-  }
 
-  Serial.println("A card is present.");
+    Serial.print("Initializing SD card...");
+    // see if the card is present and can be initialized:
+    if (_card.init(SD_DETECT_PIN) && _fatFs.init())
+    {
+        Serial.println("card initialized.");
+    }
+    else
+    {
+        Serial.println("card init fail !!!");
+        while (true)
+        {
+        }
+    }
 
-  // print the type of card
-  Serial.print("\nCard type: ");
-  switch (card.type()) {
-    case SD_CARD_TYPE_SD1:
-      Serial.println("SD1");
-      break;
-    case SD_CARD_TYPE_SD2:
-      Serial.println("SD2");
-      break;
-    case SD_CARD_TYPE_SDHC:
-      Serial.println("SDHC");
-      break;
-    default:
-      Serial.println("Unknown");
-  }
+    FILINFO fno;
+    uint8_t mode = FILE_WRITE;
+    if ((mode == FILE_WRITE) && (f_stat(FILENAME, &fno) != FR_OK))
+    {
+        mode = mode | FA_CREATE_ALWAYS;
+    }
 
-  // Now we will try to open the 'volume'/'partition' - it should be FAT16 or FAT32
-  if (!fatFs.init()) {
-    Serial.println("Could not find FAT16/FAT32 partition.\nMake sure you've formatted the card");
-    return;
-  }
+    if (f_open(_fil, FILENAME, mode) == FR_OK)
+    {
+        Serial.println("File opened");
+    }
+    else
+    {
+        Serial.println("File open error !!!");
+    }
 
-  // print the type and size of the first FAT-type volume
-  uint64_t volumesize;
-  Serial.print("\nVolume type is FAT");
-  Serial.println(fatFs.fatType(), DEC);
-  Serial.println();
-
-  volumesize = fatFs.blocksPerCluster();    // clusters are collections of blocks
-  volumesize *= fatFs.clusterCount();       // we'll have a lot of clusters
-  volumesize *= 512;                        // SD card blocks are always 512 bytes
-  Serial.print("Volume size (bytes): ");
-  Serial.println(volumesize);
-  Serial.print("Volume size (Kbytes): ");
-  volumesize /= 1024;
-  Serial.println(volumesize);
-  Serial.print("Volume size (Mbytes): ");
-  volumesize /= 1024;
-  Serial.println(volumesize);
-
-
-  Serial.println("\nFiles found on the card (name, date and size in bytes): ");
-  File root = SD.openRoot();
-
-  // list all files in the card with date and size
-  root.ls(LS_R | LS_DATE | LS_SIZE);
-  Serial.println("###### End of the SD tests ######");
+    if (f_expand(_fil, 10 * 1024 * 1024, 1) == FR_OK)
+    { /* Check if the file has been expanded */
+        Serial.println("Failed to allocate contiguous area.");
+    }
+    else
+    {
+        Serial.println("File size reserved");
+    }
+    f_close(_fil);
+    Serial.println("all done");
 }
 
-void loop(void) {
-  // do nothing
+uint8_t buff[512];
+
+void loop()
+{
+    // static uint32_t prev_measure_time = 0;
+    // static uint32_t writes_num = 0;
+    // uint32_t curr_time = millis();
+    // if ((curr_time - WRITE_PERIOD_MS) >= prev_measure_time)
+    // {
+    //     prev_measure_time = curr_time;
+    //     Serial.print("write ");
+    //     Serial.println(writes_num++);
+    //     memcpy(buff, &curr_time, sizeof(curr_time));
+    //     if (dataFile)
+    //     {
+    //         Serial.println(dataFile.write(buff, sizeof(buff)));
+    //     }
+    //     else
+    //     {
+    //         Serial.println("error opening datalog.txt");
+    //     }
+    // }
 }
