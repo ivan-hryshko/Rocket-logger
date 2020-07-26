@@ -59,7 +59,7 @@
 /  and optional writing functions as well. */
 
 
-#define _FS_MINIMIZE  2
+#define _FS_MINIMIZE  3
 /* This option defines minimization level to remove some basic API functions.
 /
 /   0: All basic functions are enabled.
@@ -142,7 +142,7 @@
 */
 
 
-#define _USE_LFN  1
+#define _USE_LFN  0
 #define _MAX_LFN  255
 /* The _USE_LFN switches the support of long file name (LFN).
 /
@@ -191,7 +191,7 @@
 / Drive/Volume Configurations
 /---------------------------------------------------------------------------*/
 
-#define _VOLUMES  2
+#define _VOLUMES  1
 /* Number of volumes (logical drives) to be used. */
 
 
@@ -259,7 +259,7 @@
 /  Note that enabling exFAT discards C89 compatibility. */
 
 
-#define _FS_NORTC 0
+#define _FS_NORTC 1
 #define _NORTC_MON  1
 #define _NORTC_MDAY 1
 #define _NORTC_YEAR 2016

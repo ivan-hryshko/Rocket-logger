@@ -13,7 +13,7 @@
 #include "Arduino.h"
 #include <string.h>
 
-#define WRITE_PERIOD_MS 10
+#define WRITE_PERIOD_MS 100
 #define FILENAME "test.bin"
 
 // If SD card slot has no detect pin then define it as SD_DETECT_NONE
@@ -21,6 +21,8 @@
 #ifndef SD_DETECT_PIN
 #define SD_DETECT_PIN SD_DETECT_NONE
 #endif
+
+uint8_t buff[512];
 
 SdFatFs _fatFs;
 FIL ff_struct = {};
@@ -67,36 +69,63 @@ void setup()
 
     if (f_expand(_fil, 10 * 1024 * 1024, 1) == FR_OK)
     { /* Check if the file has been expanded */
-        Serial.println("Failed to allocate contiguous area.");
+        Serial.println("File size reserved");
     }
     else
     {
-        Serial.println("File size reserved");
+        Serial.println("Failed to allocate contiguous area.");
     }
-    f_close(_fil);
-    Serial.println("all done");
+    UINT written_len = 0;
+    strncpy((char*)buff, "this is header", sizeof(buff));
+    if (f_write(_fil, buff, sizeof(buff), &written_len) == FR_OK &&
+        f_sync(_fil) == FR_OK)
+    {
+        Serial.println("all done");
+    }
+    else
+    {
+        Serial.println("File header write err");
+    }
+    memset(buff, '0', sizeof(buff));
 }
-
-uint8_t buff[512];
 
 void loop()
 {
-    // static uint32_t prev_measure_time = 0;
-    // static uint32_t writes_num = 0;
-    // uint32_t curr_time = millis();
-    // if ((curr_time - WRITE_PERIOD_MS) >= prev_measure_time)
-    // {
-    //     prev_measure_time = curr_time;
-    //     Serial.print("write ");
-    //     Serial.println(writes_num++);
-    //     memcpy(buff, &curr_time, sizeof(curr_time));
-    //     if (dataFile)
-    //     {
-    //         Serial.println(dataFile.write(buff, sizeof(buff)));
-    //     }
-    //     else
-    //     {
-    //         Serial.println("error opening datalog.txt");
-    //     }
-    // }
+    static uint32_t prev_measure_time = millis();
+    static uint32_t writes_num = 0;
+    uint32_t curr_time = millis();
+    if ((curr_time - WRITE_PERIOD_MS) >= prev_measure_time)
+    {
+        prev_measure_time = curr_time;
+        Serial.print("write ");
+        Serial.println(writes_num++);
+        memcpy(buff, &curr_time, sizeof(curr_time));
+        UINT written_len = 0;
+        FRESULT ret = f_write(_fil, buff, sizeof(buff), &written_len);
+        if (ret == FR_OK)
+        {
+            Serial.print("buff written: ");
+            Serial.println(written_len);
+            static uint32_t last_sync_time = curr_time;
+            if (curr_time - last_sync_time > 1000)
+            {
+                if (f_sync(_fil) == FR_OK)
+                {
+                    Serial.println("sync ok");
+                    last_sync_time = curr_time;
+                }
+                else
+                {
+                    Serial.print("sync err: ");
+                    Serial.println(ret);
+                }
+                
+            }
+        }
+        else
+        {
+            Serial.print("error file write: ");
+            Serial.println(ret);
+        }
+    }
 }
