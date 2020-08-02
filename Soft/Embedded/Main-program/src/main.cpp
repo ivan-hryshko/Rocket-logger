@@ -8,8 +8,10 @@
  */
 
 // #include <STM32SD.h>
-#include "Sd2Card.h"
-#include "SdFatFs.h"
+// #include "ffconf.h"
+#include "bsp_sd.h"
+#include "ff_gen_drv.h"
+#include "diskio.h"
 #include "Arduino.h"
 #include <string.h>
 
@@ -22,33 +24,52 @@
 #define SD_DETECT_PIN SD_DETECT_NONE
 #endif
 
+void card_error_handler(const char *msg)
+{
+    Serial.print("SD card error: ");
+    Serial.println(msg);
+    Serial.println("Halted");
+    while (true)
+    {
+        delay(1);
+    }
+}
+
 uint8_t buff[512];
 
-SdFatFs _fatFs;
 FIL ff_struct = {};
 FIL *_fil = &ff_struct;
 void setup()
 {
-    Sd2Card _card;
-    // Open serial communications and wait for port to open:
-    Serial.begin(115200);
+    Serial.begin(115200); // Open serial communications and wait for port to open:
     while (!Serial)
     {
         ; // wait for serial port to connect. Needed for Leonardo only
     }
 
+    char SDPath[4]; // SD card logical drive path
+    FATFS SDFatFs;  /* File system object for SD card logical drive */
+
     Serial.print("Initializing SD card...");
     // see if the card is present and can be initialized:
-    if (_card.init(SD_DETECT_PIN) && _fatFs.init())
+    // if (_fatFs.init())
+    // {
+    //     Serial.println("card initialized.");
+    // }
+    // else
+    // {
+    //     Serial.println("card init fail !!!");
+    //     while (true)
+    //     {
+    //     }
+    // }
+    if (FATFS_LinkDriver(&SD_Driver, SDPath) != 0)
     {
-        Serial.println("card initialized.");
+        card_error_handler("card link error");
     }
-    else
+    if (f_mount(&SDFatFs, (TCHAR const*)SDPath, 0) != FR_OK)
     {
-        Serial.println("card init fail !!!");
-        while (true)
-        {
-        }
+        card_error_handler("mount error");
     }
 
     FILINFO fno;
@@ -76,7 +97,7 @@ void setup()
         Serial.println("Failed to allocate contiguous area.");
     }
     UINT written_len = 0;
-    strncpy((char*)buff, "this is header", sizeof(buff));
+    strncpy((char *)buff, "this is header", sizeof(buff));
     if (f_write(_fil, buff, sizeof(buff), &written_len) == FR_OK &&
         f_sync(_fil) == FR_OK)
     {
@@ -119,7 +140,6 @@ void loop()
                     Serial.print("sync err: ");
                     Serial.println(ret);
                 }
-                
             }
         }
         else
