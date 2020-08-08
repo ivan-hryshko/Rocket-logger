@@ -7,22 +7,14 @@
  * SD card
  */
 
-// #include <STM32SD.h>
-// #include "ffconf.h"
 #include "bsp_sd.h"
 #include "ff_gen_drv.h"
-#include "diskio.h"
+#include "drivers/sd_diskio.h"
 #include "Arduino.h"
 #include <string.h>
 
 #define WRITE_PERIOD_MS 100
 #define FILENAME "test.bin"
-
-// If SD card slot has no detect pin then define it as SD_DETECT_NONE
-// to ignore it. One other option is to call 'SD.begin()' without parameter.
-#ifndef SD_DETECT_PIN
-#define SD_DETECT_PIN SD_DETECT_NONE
-#endif
 
 void card_error_handler(const char *msg)
 {
@@ -45,6 +37,10 @@ void setup()
     while (!Serial)
     {
         ; // wait for serial port to connect. Needed for Leonardo only
+    }
+    while(Serial.read() != '1')
+    {
+        
     }
 
     char SDPath[4]; // SD card logical drive path
@@ -72,20 +68,13 @@ void setup()
         card_error_handler("mount error");
     }
 
-    FILINFO fno;
-    uint8_t mode = FILE_WRITE;
-    if ((mode == FILE_WRITE) && (f_stat(FILENAME, &fno) != FR_OK))
-    {
-        mode = mode | FA_CREATE_ALWAYS;
-    }
-
-    if (f_open(_fil, FILENAME, mode) == FR_OK)
+    if (f_open(_fil, FILENAME, FA_WRITE | FA_CREATE_ALWAYS) == FR_OK)
     {
         Serial.println("File opened");
     }
     else
     {
-        Serial.println("File open error !!!");
+        card_error_handler("File open error !!!");
     }
 
     if (f_expand(_fil, 10 * 1024 * 1024, 1) == FR_OK)
@@ -94,7 +83,7 @@ void setup()
     }
     else
     {
-        Serial.println("Failed to allocate contiguous area.");
+        card_error_handler("Failed to allocate contiguous area.");
     }
     UINT written_len = 0;
     strncpy((char *)buff, "this is header", sizeof(buff));
@@ -105,7 +94,7 @@ void setup()
     }
     else
     {
-        Serial.println("File header write err");
+        card_error_handler("File header write err");
     }
     memset(buff, '0', sizeof(buff));
 }
