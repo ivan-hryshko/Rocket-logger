@@ -18,6 +18,7 @@
 
 void card_error_handler(const char *msg)
 {
+    Serial.println();
     Serial.print("SD card error: ");
     Serial.println(msg);
     Serial.println("Halted");
@@ -36,11 +37,7 @@ void setup()
     Serial.begin(115200); // Open serial communications and wait for port to open:
     while (!Serial)
     {
-        ; // wait for serial port to connect. Needed for Leonardo only
-    }
-    while(Serial.read() != '1')
-    {
-        
+        ; // wait for serial port to connect.
     }
 
     char SDPath[4]; // SD card logical drive path
