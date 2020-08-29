@@ -91,6 +91,9 @@ Please update the core or install previous libray version."
 #endif
 #endif
 
+void SDIO_IRQHandler(void);
+void DMA2_Channel4_5_IRQHandler(void);
+
 /* SD Exported Functions */
 uint8_t BSP_SD_Init(void);
 uint8_t BSP_SD_DeInit(void);
