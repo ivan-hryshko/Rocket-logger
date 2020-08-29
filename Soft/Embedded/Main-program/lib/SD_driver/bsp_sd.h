@@ -78,7 +78,7 @@ Please update the core or install previous libray version."
 
 /* Could be redefined in variant.h or using build_opt.h */
 #ifndef SD_DATATIMEOUT
-#define SD_DATATIMEOUT         100000000U
+#define SD_DATATIMEOUT         10000U
 #endif
 
 #ifdef SDMMC_TRANSCEIVER_ENABLE
