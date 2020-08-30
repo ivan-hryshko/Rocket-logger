@@ -93,6 +93,7 @@ Please update the core or install previous libray version."
 
 void SDIO_IRQHandler(void);
 void DMA2_Channel4_5_IRQHandler(void);
+void BSP_SD_set_tx_callback(void (*callback)(void));
 
 /* SD Exported Functions */
 uint8_t BSP_SD_Init(void);
