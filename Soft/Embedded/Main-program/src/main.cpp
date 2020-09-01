@@ -9,7 +9,13 @@
 
 #include "Arduino.h"
 #include "sd_log.h"
+#include "MPU9250.h"
+#include "Adafruit_BMP280.h"
 #include <string.h>
+#include <Wire.h>
+
+Adafruit_BMP280 bmp; // use I2C interface
+MPU9250 MPU(Wire, 0x68);
 
 void setup()
 {
@@ -18,6 +24,55 @@ void setup()
     {
         ; // wait for serial port to connect.
     }
+    Serial.println("Logger start");
+    Wire.setSDA(PB11);
+    Wire.setSCL(PB10);
+    int status = MPU.begin();
+    if (status < 0)
+    {
+        Serial.print("MPU init fail: ");
+        Serial.println(status);
+        while (1)
+        {
+        }
+    }
+    else
+    {
+        Serial.println("MPU inited");
+    }
+    if (!bmp.begin())
+    {
+        Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));
+        while (1)
+        {
+        }
+    }
+    else
+    {
+        Serial.println("BMP inited");
+    }
+    MPU.setAccelRange(MPU9250::ACCEL_RANGE_16G);
+    MPU.setGyroRange(MPU9250::GYRO_RANGE_2000DPS);
+    MPU.enableDataReadyInterrupt();
+
+    /* Default settings from datasheet. */
+    bmp.setSampling(Adafruit_BMP280::MODE_FORCED,   /* Operating Mode. */
+                    Adafruit_BMP280::SAMPLING_NONE, /* Temp. oversampling */
+                    Adafruit_BMP280::SAMPLING_NONE, /* Pressure oversampling */
+                    Adafruit_BMP280::FILTER_OFF,    /* Filtering. */
+                    Adafruit_BMP280::STANDBY_MS_1); /* Standby time. */
+
+    analogReadResolution(8);
+
+    pinMode(PB4, OUTPUT);
+    digitalWrite(PB4, HIGH);
+    delay (50);
+    digitalWrite(PB4, LOW);
+
+    // MPU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ);
+
+    // MPU.setSrd(19);
+    Serial.println("init done");
 }
 
 typedef struct __attribute__((packed))
@@ -30,7 +85,7 @@ typedef struct __attribute__((packed))
     uint16_t bmp_temp;  // 2 bytes
     uint16_t bmp_press; // 2 bytes
 
-    uint16_t mpu_temp; // 2 bytes
+    int16_t mpu_temp; // 2 bytes
 
     int16_t mpu_acc_x; // 2 bytes
     int16_t mpu_acc_y; // 2 bytes
@@ -57,24 +112,57 @@ data_to_write_struct data;
 void loop()
 {
     static SD_log SD;
-    for (uint16_t i = 0; i < 1000; i++)
+    static uint8_t measure_num = 0;
+
+    uint32_t curr_time = micros();
+    static uint32_t last_measure_time = curr_time - 1000;
+
+    if (curr_time - last_measure_time >= 1000)
     {
-        // Serial.print("new data: ");
-        // Serial.println(i);
-        uint32_t curr_time = micros();
-        memcpy(&data.buff[0], &i, sizeof(i));
-        strcpy(reinterpret_cast<char *>(&data.buff[sizeof(i)]), "this is payload");
-        strcpy(reinterpret_cast<char *>(&data.buff[20]), String(curr_time).c_str());
-        // for (uint8_t j = 0; j < sizeof(data); j++)
+        last_measure_time += 1000;
+        MPU.readSensor();
+        measured_values_t current_meas =
+            {
+                .num = measure_num++,
+                .micros = curr_time,
+                .batt_voltage = 0,  //static_cast<uint8_t>(analogRead(PC0)),
+                .flags = 0,
+
+                .bmp_temp = 0xADDE,
+                .bmp_press = 0xEFBE,
+
+                .mpu_temp = MPU._tcounts,
+
+                .mpu_acc_x = MPU._axcounts,
+                .mpu_acc_y = MPU._aycounts,
+                .mpu_acc_z = MPU._azcounts,
+
+                .mpu_gyr_x = MPU._gxcounts,
+                .mpu_gyr_y = MPU._gycounts,
+                .mpu_gyr_z = MPU._gzcounts,
+
+                .mpu_mag_x = MPU._hxcounts,
+                .mpu_mag_y = MPU._hycounts,
+                .mpu_mag_z = MPU._hzcounts,
+
+                .reserved = {0},
+
+            };
+        // Serial.println(current_meas.mpu_acc_x);
+        // for (uint8_t j = 0; j < sizeof(current_meas); j++)
         // {
-        //     Serial.print (((uint8_t*)(&data))[j], HEX);
-        //     Serial.print (' ');
+        //     Serial.print(((uint8_t *)(&current_meas))[j], HEX);
+        //     Serial.print(' ');
         // }
         // Serial.println();
-        SD.write(&data, sizeof(data));
+        SD.write(&current_meas, sizeof(current_meas));
     }
-    Serial.println("Write to file done");
-    while (true)
+    else
     {
+        // Serial.println("skipped");
     }
+    // Serial.println("Write to file done");
+    // while (true)
+    // {
+    // }
 }

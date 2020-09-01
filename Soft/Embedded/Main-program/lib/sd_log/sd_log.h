@@ -11,21 +11,6 @@
 
 #define BUFFER_SIZE 10  // number of elements in output buffer (each 512 bytes)
 
-// just for fixed-size queue
-// template <typename T, int MaxLen, typename Container = std::deque<T>>
-// class FixedQueue : public std::queue<T, Container>
-// {
-// public:
-//     void push(const T &value)
-//     {
-//         if (this->size() == MaxLen)
-//         {
-//             this->c.pop_front();
-//         }
-//         std::queue<T, Container>::push(value);
-//     }
-// };
-
 typedef std::array<uint8_t, 512> block_512_t;
 
 class SD_log

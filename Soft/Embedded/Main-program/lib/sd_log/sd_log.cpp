@@ -61,19 +61,9 @@ SD_log::SD_log()
     {
         card_error_handler(String("Failed to allocate contiguous area: " + String(ret)).c_str());
     }
-    UINT written_len = 0;
     uint8_t buff[512] = {0};
-
-    strcpy((char *)buff, "this is new header");
-    strncpy((char *)&buff[509], "end", 3);
-    if (f_write(_fil, buff, sizeof(buff), &written_len) == FR_OK)
-    {
-        log.trace("header write done\n");
-    }
-    else
-    {
-        card_error_handler("File header write err");
-    }
+    strcpy(reinterpret_cast<char*>(buff), "this is new header");
+    write_to_file(buff);
     ret = f_sync(_fil);
     if (ret == FR_OK)
     {
@@ -83,8 +73,20 @@ SD_log::SD_log()
     {
         card_error_handler(String("file sync error: " + String(ret)).c_str());
     }
+    // strcpy((char *)buff, "this is new header");
+    // UINT written_len = 0;
 
-    delay(100);
+    // // strncpy((char *)&buff[509], "end", 3);
+    // if (f_write(_fil, buff, sizeof(buff), &written_len) == FR_OK)
+    // {
+    //     log.trace("header write done (%d bytes)\n", written_len);
+    // }
+    // else
+    // {
+    //     card_error_handler("File header write err");
+    // }
+
+    // delay(200);
 }
 
 void SD_log::tx_done_cb(void)

@@ -56,7 +56,7 @@ ENTRY(Reset_Handler)
 /* Highest address of the user mode stack */
 _estack = 0x20000000 + LD_MAX_DATA_SIZE;	/* end of "RAM" Ram type memory */
 _Min_Heap_Size = 0x1a00;      /* required amount of heap  */
-_Min_Stack_Size = 0x400; /* required amount of stack */
+_Min_Stack_Size = 0x500; /* required amount of stack */
 
 /* Memories definition */
 MEMORY
