@@ -11,20 +11,45 @@
 #include "sd_log.h"
 #include <string.h>
 
-#define WRITE_PERIOD_MS 8
-
 void setup()
 {
-    Serial.begin(115200); // Open serial communications and wait for port to open:
+    Serial.begin(921600); // Open serial communications and wait for port to open:
     while (!Serial)
     {
         ; // wait for serial port to connect.
     }
 }
 
-typedef struct
+typedef struct __attribute__((packed))
 {
-    uint8_t buff[512];
+    uint8_t num;          // 1 byte
+    uint32_t micros;      // 4 bytes
+    uint8_t batt_voltage; // 1 byte
+    uint8_t flags;        // 1 byte
+
+    uint16_t bmp_temp;  // 2 bytes
+    uint16_t bmp_press; // 2 bytes
+
+    uint16_t mpu_temp; // 2 bytes
+
+    int16_t mpu_acc_x; // 2 bytes
+    int16_t mpu_acc_y; // 2 bytes
+    int16_t mpu_acc_z; // 2 bytes
+
+    int16_t mpu_gyr_x; // 2 bytes
+    int16_t mpu_gyr_y; // 2 bytes
+    int16_t mpu_gyr_z; // 2 bytes
+
+    int16_t mpu_mag_x; // 2 bytes
+    int16_t mpu_mag_y; // 2 bytes
+    int16_t mpu_mag_z; // 2 bytes
+    uint8_t reserved[1];
+
+} measured_values_t;
+
+typedef struct __attribute__((packed))
+{
+    uint8_t buff[32];
 } data_to_write_struct;
 
 data_to_write_struct data;
@@ -32,31 +57,24 @@ data_to_write_struct data;
 void loop()
 {
     static SD_log SD;
-    uint32_t curr_time = millis();
-    strcpy(reinterpret_cast<char *>(&data.buff[0]), "this is data from struct\n");
-    strcpy(reinterpret_cast<char *>(&data.buff[100]), String(curr_time).c_str());
-    SD.write(&data, sizeof(data));
-    Serial.println("Write done");
+    for (uint16_t i = 0; i < 1000; i++)
+    {
+        // Serial.print("new data: ");
+        // Serial.println(i);
+        uint32_t curr_time = micros();
+        memcpy(&data.buff[0], &i, sizeof(i));
+        strcpy(reinterpret_cast<char *>(&data.buff[sizeof(i)]), "this is payload");
+        strcpy(reinterpret_cast<char *>(&data.buff[20]), String(curr_time).c_str());
+        // for (uint8_t j = 0; j < sizeof(data); j++)
+        // {
+        //     Serial.print (((uint8_t*)(&data))[j], HEX);
+        //     Serial.print (' ');
+        // }
+        // Serial.println();
+        SD.write(&data, sizeof(data));
+    }
+    Serial.println("Write to file done");
     while (true)
     {
-    }
-    static uint32_t start_time = curr_time;
-    static uint32_t prev_measure_time = curr_time;
-    static uint32_t writes_num = 0;
-    if ((curr_time - WRITE_PERIOD_MS) >= prev_measure_time)
-    {
-        prev_measure_time += WRITE_PERIOD_MS;
-
-        writes_num++;
-        if (writes_num >= 1000)
-        {
-            Serial.print("Total time: ");
-            Serial.println(millis() - start_time);
-            // if (f_close(_fil) != FR_OK)
-            // {
-            //     card_error_handler("file close error");
-            // }
-            // card_error_handler("file write done");
-        }
     }
 }
