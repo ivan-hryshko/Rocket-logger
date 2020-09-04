@@ -53,10 +53,11 @@ void setup()
     {
         Serial.println("BMP inited");
     }
-    Wire.setClock(800000);
+    Wire.setClock(400000);
     bmp.startNormalConversion();
     MPU.setAccelRange(MPU9250::ACCEL_RANGE_16G);
     MPU.setGyroRange(MPU9250::GYRO_RANGE_2000DPS);
+    MPU.setSrd(0);
     MPU.enableDataReadyInterrupt();
 
     analogReadResolution(8);
@@ -143,21 +144,21 @@ void loop()
                 .reserved = {0},
 
             };
-        float bmp_temp = 0, bmp_pressure = 0;
-        static uint32_t bmp_meas_time = micros() - 10000;
-        if ((curr_time - bmp_meas_time >= 10000) && bmp.getTempPres(bmp_temp, bmp_pressure))
-        {
-            bmp_meas_time += 10000;
-            Serial.print(bmp_temp);
-            Serial.print(" ");
-            Serial.println(bmp_pressure);
-            current_meas.bmp_temp = bmp_temp*10;
-            current_meas.bmp_press = bmp_pressure/10;
-        }
-        else
-        {
-            // Serial.println("BMP not ready");
-        }
+        // float bmp_temp = 0, bmp_pressure = 0;
+        // static uint32_t bmp_meas_time = micros() - 10000;
+        // if ((curr_time - bmp_meas_time >= 10000) && bmp.getTempPres(bmp_temp, bmp_pressure))
+        // {
+        //     bmp_meas_time += 10000;
+        //     Serial.print(bmp_temp);
+        //     Serial.print(" ");
+        //     Serial.println(bmp_pressure);
+        //     current_meas.bmp_temp = bmp_temp*10;
+        //     current_meas.bmp_press = bmp_pressure/10;
+        // }
+        // else
+        // {
+        //     // Serial.println("BMP not ready");
+        // }
         if (MPU.readSensor() > 0)
         {
             current_meas.mpu_temp = MPU._tcounts;
@@ -182,6 +183,6 @@ void loop()
         // }
         // Serial.println();
         SD.write(&current_meas, sizeof(current_meas));
-        Serial.println(micros() - curr_time);
+        // Serial.println(micros() - curr_time);
     }
 }

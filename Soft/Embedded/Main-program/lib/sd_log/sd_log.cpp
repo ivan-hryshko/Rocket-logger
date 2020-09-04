@@ -52,7 +52,7 @@ SD_log::SD_log()
     {
         card_error_handler("File open error !!!");
     }
-    FRESULT ret = f_expand(_fil, 10UL * 1024UL * 1024UL, 1);
+    FRESULT ret = f_expand(_fil, 1UL * 1024UL * 1024UL, 1);
     if (ret == FR_OK)
     { /* Check if the file has been expanded */
         log.trace("File size reserved\n");
