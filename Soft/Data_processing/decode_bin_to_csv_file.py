@@ -1,4 +1,6 @@
 import csv
+import sys
+
 FILE_NAME_OUTPUT = "output_data.csv"
 # FILE_NAME_INPUT = "input_data.bin"
 FILE_NAME_INPUT = "TEST.BIN"
@@ -22,6 +24,9 @@ BUFF_SETUP=[
     [2,    0,  1,  True,  "mpu_mag_z"],
     [1,    0,  1,  True,  "reserved"]
 ]
+if __name__ == "__main__":
+    FILE_NAME_INPUT = sys.argv[1]
+
 MAX_BUFF_IN_PACK = len(BUFF_SETUP)
 
 buff_counter = 0
