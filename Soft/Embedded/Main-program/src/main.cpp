@@ -10,13 +10,13 @@
 #include "Arduino.h"
 #include "sd_log.h"
 #include "MPU9250.h"
-#include "BMP280_DEV.h"
+#include "BMx280I2C.h"
 #include <string.h>
 #include <Wire.h>
 
 #define MAIN_PERIOD 1000
 
-BMP280_DEV bmp; // use I2C interface
+BMx280I2C bmp(0x77); // use I2C interface
 MPU9250 MPU(Wire, 0x68);
 
 void setup()
@@ -29,20 +29,22 @@ void setup()
     Serial.println("Logger start");
     Wire.setSDA(PB11);
     Wire.setSCL(PB10);
-    int status = MPU.begin();
-    if (status < 0)
-    {
-        Serial.print("MPU init fail: ");
-        Serial.println(status);
-        while (1)
-        {
-        }
-    }
-    else
-    {
-        Serial.println("MPU inited");
-    }
-    if (!bmp.begin(NORMAL_MODE, OVERSAMPLING_SKIP, OVERSAMPLING_SKIP))
+    Wire.begin();
+    Wire.setClock(1000000);
+    // int status = MPU.begin();
+    // if (status < 0)
+    // {
+    //     Serial.print("MPU init fail: ");
+    //     Serial.println(status);
+    //     while (1)
+    //     {
+    //     }
+    // }
+    // else
+    // {
+    //     Serial.println("MPU inited");
+    // }
+    if (bmp.begin() == 0)
     {
         Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));
         while (1)
@@ -51,14 +53,42 @@ void setup()
     }
     else
     {
+        if (bmp.isBME280())
+        {
+            Serial.println("sensor is a BME280");
+        }
+        else
+        {
+            Serial.println("sensor is a BMP280");
+        }
+
+        //reset sensor to default parameters.
+        bmp.resetToDefaults();
+
+        //by default sensing is disabled and must be enabled by setting a non-zero
+        //oversampling setting.
+        //set an oversampling setting for pressure and temperature measurements.
+        bmp.writeOversamplingPressure(BMx280MI::OSRS_P_x01);
+        bmp.writeOversamplingTemperature(BMx280MI::OSRS_T_x01);
+        bmp.writePowerMode(BMx280MI::BMx280_MODE_NORMAL);
+        bmp.writeFilterSetting(BMx280MI::FILTER_OFF);
+        bmp.writeStandbyTime(BMx280MI::T_SB_1);
+        if (!bmp.measure())
+        {
+            Serial.println("could not start measurement, is a measurement already running?");
+            return;
+        }
+        // bmp.setPresOversampling(OVERSAMPLING_SKIP);    // Set the pressure oversampling to X4
+        // bmp.setTempOversampling(OVERSAMPLING_SKIP); // Set the temperature oversampling to X1
+        // bmp.setIIRFilter(IIR_FILTER_OFF);
+        // bmp.setTimeStandby(TIME_STANDBY_05MS);
         Serial.println("BMP inited");
     }
-    Wire.setClock(400000);
-    bmp.startNormalConversion();
-    MPU.setAccelRange(MPU9250::ACCEL_RANGE_16G);
-    MPU.setGyroRange(MPU9250::GYRO_RANGE_2000DPS);
-    MPU.setSrd(0);
-    MPU.enableDataReadyInterrupt();
+    // bmp.startNormalConversion();
+    // MPU.setAccelRange(MPU9250::ACCEL_RANGE_16G);
+    // MPU.setGyroRange(MPU9250::GYRO_RANGE_2000DPS);
+    // MPU.setSrd(0);
+    // MPU.enableDataReadyInterrupt();
 
     analogReadResolution(8);
 
@@ -109,6 +139,23 @@ data_to_write_struct data;
 
 void loop()
 {
+
+    while (true)
+    {
+        // float bmp_temp = 0, bmp_pressure = 0;
+        if (bmp.hasValue())
+        {
+            Serial.print(bmp.getPressure());
+            Serial.print(" ");
+            Serial.println(bmp.getTemperature());
+        }
+        else
+        {
+            // Serial.println("BMP not ready");
+        }
+        //delay(100);
+    }
+
     static SD_log SD;
     static uint8_t measure_num = 0;
 
