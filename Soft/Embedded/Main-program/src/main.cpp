@@ -10,11 +10,13 @@
 #include "Arduino.h"
 #include "sd_log.h"
 #include "MPU9250.h"
-#include "Adafruit_BMP280.h"
+#include "BMP280_DEV.h"
 #include <string.h>
 #include <Wire.h>
 
-Adafruit_BMP280 bmp; // use I2C interface
+#define MAIN_PERIOD 1000
+
+BMP280_DEV bmp; // use I2C interface
 MPU9250 MPU(Wire, 0x68);
 
 void setup()
@@ -40,7 +42,7 @@ void setup()
     {
         Serial.println("MPU inited");
     }
-    if (!bmp.begin())
+    if (!bmp.begin(NORMAL_MODE, OVERSAMPLING_SKIP, OVERSAMPLING_SKIP))
     {
         Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));
         while (1)
@@ -51,22 +53,18 @@ void setup()
     {
         Serial.println("BMP inited");
     }
+    Wire.setClock(400000);
+    bmp.startNormalConversion();
     MPU.setAccelRange(MPU9250::ACCEL_RANGE_16G);
     MPU.setGyroRange(MPU9250::GYRO_RANGE_2000DPS);
+    MPU.setSrd(0);
     MPU.enableDataReadyInterrupt();
-
-    /* Default settings from datasheet. */
-    bmp.setSampling(Adafruit_BMP280::MODE_FORCED,   /* Operating Mode. */
-                    Adafruit_BMP280::SAMPLING_NONE, /* Temp. oversampling */
-                    Adafruit_BMP280::SAMPLING_NONE, /* Pressure oversampling */
-                    Adafruit_BMP280::FILTER_OFF,    /* Filtering. */
-                    Adafruit_BMP280::STANDBY_MS_1); /* Standby time. */
 
     analogReadResolution(8);
 
     pinMode(PB4, OUTPUT);
     digitalWrite(PB4, HIGH);
-    delay (50);
+    delay(50);
     digitalWrite(PB4, LOW);
 
     // MPU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ);
@@ -115,40 +113,69 @@ void loop()
     static uint8_t measure_num = 0;
 
     uint32_t curr_time = micros();
-    static uint32_t last_measure_time = curr_time - 1000;
+    static uint32_t last_measure_time = curr_time - MAIN_PERIOD;
 
-    if (curr_time - last_measure_time >= 1000)
+    if (curr_time - last_measure_time >= MAIN_PERIOD)
     {
-        last_measure_time += 1000;
-        MPU.readSensor();
+        last_measure_time += MAIN_PERIOD;
+
+        // bmp.startForcedConversion();
         measured_values_t current_meas =
             {
                 .num = measure_num++,
                 .micros = curr_time,
-                .batt_voltage = 0,  //static_cast<uint8_t>(analogRead(PC0)),
+                .batt_voltage = 0, //static_cast<uint8_t>(analogRead(PC0)),
                 .flags = 0,
 
-                .bmp_temp = 0xADDE,
-                .bmp_press = 0xEFBE,
+                .bmp_temp = 0,
+                .bmp_press = 0,
 
-                .mpu_temp = MPU._tcounts,
-
-                .mpu_acc_x = MPU._axcounts,
-                .mpu_acc_y = MPU._aycounts,
-                .mpu_acc_z = MPU._azcounts,
-
-                .mpu_gyr_x = MPU._gxcounts,
-                .mpu_gyr_y = MPU._gycounts,
-                .mpu_gyr_z = MPU._gzcounts,
-
-                .mpu_mag_x = MPU._hxcounts,
-                .mpu_mag_y = MPU._hycounts,
-                .mpu_mag_z = MPU._hzcounts,
+                .mpu_temp = 0,
+                .mpu_acc_x = 0,
+                .mpu_acc_y = 0,
+                .mpu_acc_z = 0,
+                .mpu_gyr_x = 0,
+                .mpu_gyr_y = 0,
+                .mpu_gyr_z = 0,
+                .mpu_mag_x = 0,
+                .mpu_mag_y = 0,
+                .mpu_mag_z = 0,
 
                 .reserved = {0},
 
             };
-        // Serial.println(current_meas.mpu_acc_x);
+        // float bmp_temp = 0, bmp_pressure = 0;
+        // static uint32_t bmp_meas_time = micros() - 10000;
+        // if ((curr_time - bmp_meas_time >= 10000) && bmp.getTempPres(bmp_temp, bmp_pressure))
+        // {
+        //     bmp_meas_time += 10000;
+        //     Serial.print(bmp_temp);
+        //     Serial.print(" ");
+        //     Serial.println(bmp_pressure);
+        //     current_meas.bmp_temp = bmp_temp*10;
+        //     current_meas.bmp_press = bmp_pressure/10;
+        // }
+        // else
+        // {
+        //     // Serial.println("BMP not ready");
+        // }
+        if (MPU.readSensor() > 0)
+        {
+            current_meas.mpu_temp = MPU._tcounts;
+
+            current_meas.mpu_acc_x = MPU._axcounts;
+            current_meas.mpu_acc_y = MPU._aycounts;
+            current_meas.mpu_acc_z = MPU._azcounts;
+
+            current_meas.mpu_gyr_x = MPU._gxcounts;
+            current_meas.mpu_gyr_y = MPU._gycounts;
+            current_meas.mpu_gyr_z = MPU._gzcounts;
+
+            current_meas.mpu_mag_x = MPU._hxcounts;
+            current_meas.mpu_mag_y = MPU._hycounts;
+            current_meas.mpu_mag_z = MPU._hzcounts;
+        }
+        Serial.println(current_meas.mpu_acc_z);
         // for (uint8_t j = 0; j < sizeof(current_meas); j++)
         // {
         //     Serial.print(((uint8_t *)(&current_meas))[j], HEX);
@@ -156,13 +183,6 @@ void loop()
         // }
         // Serial.println();
         SD.write(&current_meas, sizeof(current_meas));
+        // Serial.println(micros() - curr_time);
     }
-    else
-    {
-        // Serial.println("skipped");
-    }
-    // Serial.println("Write to file done");
-    // while (true)
-    // {
-    // }
 }
