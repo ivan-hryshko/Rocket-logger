@@ -4,10 +4,10 @@
 #include "ArduinoLog.h"
 
 #ifndef SD_LOG_LEVEL
-#define SD_LOG_LEVEL LOG_LEVEL_WARNING
+#define SD_LOG_LEVEL LOG_LEVEL_NOTICE
 #endif // SD_LOG_LEVEL
 
-#define FILENAME "test.bin"
+#define FILENAME "log"  // index and ".bin" file extension will be added
 
 #define BUFFER_SIZE 10  // number of elements in output buffer (each 512 bytes)
 
@@ -26,8 +26,15 @@ private:
     char SDPath[4]; // SD card logical drive path
     FATFS SDFatFs;  /* File system object for SD card logical drive */
     std::queue<block_512_t> write_buff;
+    uint16_t file_index;
+    uint16_t file_part_num;
 
     void tx_done_cb(void);
-    void card_error_handler(const char *msg);
+
+    uint16_t get_next_file_index(void);
+    String get_full_file_name (uint16_t file_index, uint16_t file_part_num);
+
+    void card_error_handler(String msg);
+
     bool write_to_file(uint8_t buffer[512]);
 };

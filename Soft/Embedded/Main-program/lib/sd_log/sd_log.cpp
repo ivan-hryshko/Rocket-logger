@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <iterator>
 #include <array>
+#include <climits>
 
 // this is just for handling c-style pointers to class member function
 template <typename T>
@@ -28,7 +29,7 @@ std::function<Ret(Params...)> Callback<Ret(Params...)>::func;
 SD_log::SD_log()
 {
     log.begin(SD_LOG_LEVEL, &Serial);
-    log.notice("Initializing SD card:\n");
+    log.notice("Initializing SD card\n");
 
     Callback<void(void)>::func = std::bind(&SD_log::tx_done_cb, this);                            // bind member function with objext
     void (*c_style_cb)(void) = static_cast<decltype(c_style_cb)>(Callback<void(void)>::callback); // convert binded callback to C-style cb
@@ -37,20 +38,28 @@ SD_log::SD_log()
 
     if (FATFS_LinkDriver(&Custom_SD_Driver, SDPath) != 0)
     {
-        card_error_handler("card link error\n");
+        card_error_handler("card link error");
     }
-    if (f_mount(&SDFatFs, (TCHAR const *)SDPath, 0) != FR_OK)
+    if (f_mount(&SDFatFs, (TCHAR const *)SDPath, 1) != FR_OK)
     {
-        card_error_handler("mount error\n");
+        card_error_handler("mount error (is SD card installed?)");
     }
+    
+    file_index = get_next_file_index();
+    if (file_index == UINT16_MAX)
+    {
+        card_error_handler("all files indices are used");
+    }
+    file_part_num = 0;
+    String full_file_name = get_full_file_name(file_index, file_part_num);
 
-    if (f_open(_fil, FILENAME, FA_WRITE | FA_CREATE_ALWAYS) == FR_OK)
+    if (f_open(_fil, full_file_name.c_str(), FA_WRITE | FA_CREATE_NEW) == FR_OK)
     {
-        log.trace("File opened\n");
+        log.notice("File %s created\n", full_file_name.c_str());
     }
     else
     {
-        card_error_handler("File open error !!!");
+        card_error_handler(String("Can't create file ") + full_file_name);
     }
     FRESULT ret = f_expand(_fil, 1UL * 1024UL * 1024UL, 1);
     if (ret == FR_OK)
@@ -87,7 +96,36 @@ SD_log::SD_log()
     // }
 
     // delay(200);
+    log.notice("SD card inited\n");
 }
+
+uint16_t SD_log::get_next_file_index(void)
+{
+    unsigned int last_index;
+
+    for (last_index = 0; last_index < UINT32_MAX; last_index++)
+    {
+        String file_to_check = get_full_file_name(last_index, 0);
+        if (f_stat(file_to_check.c_str(), NULL) != FR_OK)   // file not found
+        {
+            break;
+        }
+        else
+        {
+            log.verbose("file %s exists", file_to_check.c_str());
+        }
+        
+    }
+
+    return (last_index);
+}
+
+String SD_log::get_full_file_name (uint16_t file_index, uint16_t file_part_num)
+{
+    String full_file_name = String(FILENAME) + '_' + String(file_index) + '_' + String (file_part_num) + ".bin";
+    return (full_file_name);
+}
+
 
 void SD_log::tx_done_cb(void)
 {
@@ -150,9 +188,9 @@ void SD_log::write(void *data, size_t size)
     }
 }
 
-void SD_log::card_error_handler(const char *msg)
+void SD_log::card_error_handler(String msg)
 {
-    log.fatal("\nSD card error: %s\nHalted\n", msg);
+    log.fatal("\nSD card error: %s\nHalted\n", msg.c_str());
     while (true)
     {
         delay(1);
