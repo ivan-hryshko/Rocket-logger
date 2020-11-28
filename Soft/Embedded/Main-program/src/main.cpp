@@ -15,7 +15,7 @@
 #include <string.h>
 #include <Wire.h>
 
-#define MAIN_LOG_LEVEL LOG_LEVEL_VERBOSE
+#define MAIN_LOG_LEVEL LOG_LEVEL_NOTICE
 
 #define MAIN_PERIOD 1000
 
@@ -50,8 +50,11 @@ void setup()
         MPU.setAccelRange(MPU9250::ACCEL_RANGE_16G);
         MPU.setGyroRange(MPU9250::GYRO_RANGE_2000DPS);
         MPU.setSrd(0);
+        // MPU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ);
+        // MPU.enableDataReadyInterrupt();
         main_log.notice("MPU inited\n");
     }
+
     if (bmp.begin(NORMAL_MODE, BMP280_I2C_ADDR) == 0)
     {
         main_log.fatal(F("Could not find a valid BMP280 sensor, check wiring!"));
@@ -68,26 +71,12 @@ void setup()
         Wire.setClock(400000);
 
         //reset sensor to default parameters.
-        // bmp280.startNormalConversion();
         // bmp.resetToDefaults();
 
-        //by default sensing is disabled and must be enabled by setting a non-zero
-        //oversampling setting.
-        //set an oversampling setting for pressure and temperature measurements.
-        // bmp.writeOversamplingPressure(BMx280MI::OSRS_P_x01);
-        // bmp.writeOversamplingTemperature(BMx280MI::OSRS_T_x01);
-        // bmp.writePowerMode(BMx280MI::BMx280_MODE_NORMAL);
-        // bmp.writeFilterSetting(BMx280MI::FILTER_OFF);
-        // bmp.writeStandbyTime(BMx280MI::T_SB_1);
         bmp.startNormalConversion();
-        // if (!bmp.startNormalConversion())
-        // {
-        //     Serial.println("could not start measurement, is a measurement already running?");
-        //     return;
-        // }
+
         main_log.notice("BMP inited\n");
     }
-    // MPU.enableDataReadyInterrupt();
 
     analogReadResolution(8);
 
@@ -96,9 +85,6 @@ void setup()
     delay(50);
     digitalWrite(PB4, LOW);
 
-    // MPU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ);
-
-    // MPU.setSrd(19);
     main_log.notice("init done\n");
 }
 
@@ -182,7 +168,9 @@ void loop()
         {
             current_meas.flags.mpu_data = false;
         }
+
         uint32_t mpu_time = micros();
+
         float bmp_temp = 0, bmp_pressure = 0;
         if (bmp.getTempPres(bmp_temp, bmp_pressure))
         {
@@ -197,6 +185,7 @@ void loop()
         {
             current_meas.flags.bmp_data = false;
         }
+
         uint32_t bmp_time = micros();
         // for (uint8_t j = 0; j < sizeof(current_meas); j++)
         // {
@@ -206,6 +195,9 @@ void loop()
         // Serial.println();
         SD.write(&current_meas, sizeof(current_meas));
         uint32_t sd_write_time = micros();
-        main_log.trace("mpu:%dus\tpres:%dus\tsd:%dus\ttotal:%dus\n", (mpu_time - start_time), (bmp_time - mpu_time), (sd_write_time - bmp_time), (sd_write_time - start_time));
+        if ((sd_write_time - start_time) > 1500)
+        {
+            main_log.warning("Long main cycle mpu:%dus\tpres:%dus\tsd:%dus\ttotal:%dus\n", (mpu_time - start_time), (bmp_time - mpu_time), (sd_write_time - bmp_time), (sd_write_time - start_time));
+        }
     }
 }
