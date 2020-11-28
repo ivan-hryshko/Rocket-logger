@@ -111,6 +111,10 @@ typedef struct __attribute__((packed))
     {
         bool bmp_data:1;
         bool mpu_data:1;
+        bool engine_fuse_check:1;
+        bool engine_fuse_fired:1;
+        bool parachute_fuse_check:1;
+        bool parachute_fuse_fired:1;
     } __attribute__((packed)) flags;        // 1 byte
 
     struct
@@ -134,10 +138,11 @@ typedef struct __attribute__((packed))
         int16_t mag_y; // 2 bytes
         int16_t mag_z; // 2 bytes
     } __attribute__((packed)) mpu;
-    uint8_t reserved[1];
 
+    uint8_t reserved[1];
 } measured_values_t;
 
+static_assert (sizeof(measured_values_t) == 32, "measured_values_t should be 32bytes");
 
 void loop()
 {
