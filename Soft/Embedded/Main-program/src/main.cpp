@@ -19,9 +19,11 @@
 
 #define MAIN_PERIOD 1000
 
-BMP280_DEV bmp; // use I2C interface
-MPU9250 MPU(Wire, 0x68);
-Logging main_log;
+static BMP280_DEV bmp; // use I2C interface
+static MPU9250 MPU(Wire, 0x68);
+static Logging main_log;
+static SD_log record_file;
+
 
 void setup()
 {
@@ -34,13 +36,26 @@ void setup()
     {
         ; // wait for serial port to connect.
     }
+
+
     main_log.notice("Logger start\n");
+    if (record_file.init())
+    {
+        main_log.notice("Record file created\n");
+    }
+    else
+    {
+        main_log.fatal("record file create fail");
+        while (1)
+        {
+        }
+    }
+
     Wire.begin((uint8_t)PB11, (uint8_t)PB10);
     int status = MPU.begin();
     if (status < 0)
     {
-        Serial.print("MPU init fail: ");
-        Serial.println(status);
+        main_log.fatal("MPU init fail: %d", status);
         while (1)
         {
         }
@@ -132,7 +147,6 @@ static_assert (sizeof(measured_values_t) == 32, "measured_values_t should be 32b
 
 void loop()
 {
-    static SD_log SD;
     static uint8_t measure_num = 0;
 
     uint32_t start_time = micros();
@@ -193,11 +207,11 @@ void loop()
         //     Serial.print(' ');
         // }
         // Serial.println();
-        SD.write(&current_meas, sizeof(current_meas));
-        uint32_t sd_write_time = micros();
-        if ((sd_write_time - start_time) > 1500)
-        {
-            main_log.warning("Long main cycle mpu:%dus\tpres:%dus\tsd:%dus\ttotal:%dus\n", (mpu_time - start_time), (bmp_time - mpu_time), (sd_write_time - bmp_time), (sd_write_time - start_time));
-        }
+        record_file.write(&current_meas, sizeof(current_meas));
+        // uint32_t sd_write_time = micros();
+        // if ((sd_write_time - start_time) > 1500)
+        // {
+        //     main_log.warning("Long main cycle mpu:%dus\tpres:%dus\tsd:%dus\ttotal:%dus\n", (mpu_time - start_time), (bmp_time - mpu_time), (sd_write_time - bmp_time), (sd_write_time - start_time));
+        // }
     }
 }

@@ -28,8 +28,14 @@ std::function<Ret(Params...)> Callback<Ret(Params...)>::func;
 
 SD_log::SD_log()
 {
+    file_opened = false;
+    log.setPrefix(&SD_log::before_log);
+}
+
+bool SD_log::init(void)
+{
     log.begin(SD_LOG_LEVEL, &Serial);
-    log.notice("Initializing SD card\n");
+    log.trace("Initializing SD card\n");
 
     Callback<void(void)>::func = std::bind(&SD_log::tx_done_cb, this);                            // bind member function with objext
     void (*c_style_cb)(void) = static_cast<decltype(c_style_cb)>(Callback<void(void)>::callback); // convert binded callback to C-style cb
@@ -39,65 +45,39 @@ SD_log::SD_log()
     if (FATFS_LinkDriver(&Custom_SD_Driver, SDPath) != 0)
     {
         card_error_handler("card link error");
+        return (false);
     }
+
     if (f_mount(&SDFatFs, (TCHAR const *)SDPath, 1) != FR_OK)
     {
         card_error_handler("mount error (is SD card installed?)");
+        return (false);
     }
-    
+
     file_index = get_next_file_index();
     if (file_index == UINT16_MAX)
     {
         card_error_handler("all files indices are used");
+        return (false);
     }
     file_part_num = 0;
-    String full_file_name = get_full_file_name(file_index, file_part_num);
 
-    if (f_open(_fil, full_file_name.c_str(), FA_WRITE | FA_CREATE_NEW) == FR_OK)
+    if (crete_new_file() == false)
     {
-        log.notice("File %s created\n", full_file_name.c_str());
+        log.error("Can't create first log file");
+        return (false);
     }
-    else
-    {
-        card_error_handler(String("Can't create file ") + full_file_name);
-    }
-    FRESULT ret = f_expand(_fil, 1UL * 1024UL * 1024UL, 1);
-    if (ret == FR_OK)
-    { /* Check if the file has been expanded */
-        log.trace("File size reserved\n");
-    }
-    else
-    {
-        card_error_handler(String("Failed to allocate contiguous area: " + String(ret)).c_str());
-    }
-    uint8_t buff[512] = {0};
-    strcpy(reinterpret_cast<char*>(buff), "this is new header");
+
+    uint8_t buff[SD_CARD_SECTOR_SIZE] = {0};
+    strcpy(reinterpret_cast<char*>(buff), FILE_HEADER);
     write_to_file(buff);
-    ret = f_sync(_fil);
-    if (ret == FR_OK)
-    {
-        log.trace("file synced, all done\n");
-    }
-    else
-    {
-        card_error_handler(String("file sync error: " + String(ret)).c_str());
-    }
-    // strcpy((char *)buff, "this is new header");
-    // UINT written_len = 0;
-
-    // // strncpy((char *)&buff[509], "end", 3);
-    // if (f_write(_fil, buff, sizeof(buff), &written_len) == FR_OK)
-    // {
-    //     log.trace("header write done (%d bytes)\n", written_len);
-    // }
-    // else
-    // {
-    //     card_error_handler("File header write err");
-    // }
-
     // delay(200);
-    log.notice("SD card inited\n");
+
+    log.trace("SD card inited\n");
+
+    return (true);
 }
+
 
 uint16_t SD_log::get_next_file_index(void)
 {
@@ -140,6 +120,12 @@ void SD_log::tx_done_cb(void)
     }
 }
 
+void SD_log::before_log(Print* output)
+{
+    output->print("sd_log ");
+}
+
+
 void SD_log::write(void *data, size_t size)
 {
     static block_512_t buffer;
@@ -163,8 +149,10 @@ void SD_log::write(void *data, size_t size)
     buffer_pos += size;
 
 
-    if (buffer_pos == 512)
+    if (buffer_pos == SD_CARD_SECTOR_SIZE)
     {
+        String branch_type;
+        uint32_t start_time = micros();
         buffer_pos = 0;
         noInterrupts();
         if (write_buff.empty())
@@ -178,12 +166,19 @@ void SD_log::write(void *data, size_t size)
             {
                 log.error("Write failed - data lost\n");
             }
+            branch_type = "direct";
         }
         else
         {
             write_buff.push(buffer);
             interrupts();
             log.trace("Data added to buffer (%d)\n", write_buff.size());
+            branch_type = "buffer";
+        }
+        int32_t finish_time = micros();
+        if ((finish_time - start_time) > 500)
+        {
+            log.warning("Long %s write (%dus)\n", branch_type.c_str(), (finish_time - start_time));
         }
     }
 }
@@ -197,18 +192,89 @@ void SD_log::card_error_handler(String msg)
     }
 }
 
-bool SD_log::write_to_file(uint8_t buffer[512])
+bool SD_log::crete_new_file(void)
 {
-    UINT written_len = 0;
-    FRESULT ret = f_write(_fil, buffer, 512, &written_len);
-    if (ret == FR_OK)
+    FRESULT status;
+
+    if (file_opened)
     {
-        log.verbose("buff written: %d\n", written_len);
+        status = f_close(&file_obj);
+        if (status == FR_OK)
+        {
+            file_part_num++;    // next file will be created with incremented number (part)
+            file_opened = false;
+        }
+        else
+        {
+            log.fatal("Can't close file\n");
+            return (false);
+        }
+    }
+
+    String full_file_name = get_full_file_name(file_index, file_part_num);
+    status = f_open(&file_obj, full_file_name.c_str(), FA_WRITE | FA_CREATE_NEW);
+    if (status == FR_OK)
+    {
+        log.notice("File %s created\n", full_file_name.c_str());
+        file_opened = true;
+    }
+    else
+    {
+        card_error_handler("Can't create file " + full_file_name + " err:" + status);
+        return(false);
+    }
+
+    status = f_expand(&file_obj, FILE_SIZE, 1);
+    if (status == FR_OK)
+    { /* Check if the file has been expanded */
+        log.trace("File size reserved\n");
+    }
+    else
+    {
+        card_error_handler("Failed to allocate contiguous area: " + status);
+        return(false);
+    }
+
+    status = f_sync(&file_obj); // sync needed to apply file expansion to flash
+
+    if (status == FR_OK)
+    {
+        log.trace("file synced, all done\n");
+    }
+    else
+    {
+        card_error_handler("file sync error: " + status);
+        return (false);
+    }
+
+    return (true);
+}
+
+bool SD_log::write_to_file(uint8_t buffer[SD_CARD_SECTOR_SIZE])
+{
+    FRESULT status;
+    FSIZE_t file_size = f_size(&file_obj);
+    FSIZE_t file_used = f_tell(&file_obj);
+
+    log.verbose("size:%d, pos:%d\t%s%%\n", file_size, file_used, String((100.0f * file_used)/file_size, 1).c_str());
+    if (file_used + SD_CARD_SECTOR_SIZE > file_size)
+    {
+        if (crete_new_file() == false)
+        {
+            card_error_handler("Can't create new file");
+        }
+    }
+
+    UINT written_len = 0;
+    status = f_write(&file_obj, buffer, SD_CARD_SECTOR_SIZE, &written_len);
+    if (status == FR_OK)
+    {
+        log.trace("buff written: %d\n", written_len);
         return (true);
     }
     else
     {
-        log.error("error file write: %d\n", ret);
+        log.error("error file write: %d\n", status);
         return (false);
     }
 }

@@ -8,26 +8,32 @@
 #endif // SD_LOG_LEVEL
 
 #define FILENAME "log"  // index and ".bin" file extension will be added
+#define FILE_SIZE   (1UL * 1024UL * 1024UL)    // in bytes
+#define FILE_HEADER "This is file header"
 
 #define BUFFER_SIZE 10  // number of elements in output buffer (each 512 bytes)
 
-typedef std::array<uint8_t, 512> block_512_t;
+#define SD_CARD_SECTOR_SIZE 512
+
+typedef std::array<uint8_t, SD_CARD_SECTOR_SIZE> block_512_t;
 
 class SD_log
 {
 public:
     SD_log(); // constructor
+    bool init(void);
     void write(void *data, size_t size);
 
 private:
     Logging log;
-    FIL ff_struct = {};
-    FIL *_fil = &ff_struct;
+    FIL file_obj;
+    bool file_opened;
     char SDPath[4]; // SD card logical drive path
     FATFS SDFatFs;  /* File system object for SD card logical drive */
     std::queue<block_512_t> write_buff;
-    uint16_t file_index;
-    uint16_t file_part_num;
+
+    uint16_t file_index;    // used in file name (first number)
+    uint16_t file_part_num; // used in file name (second number)
 
     void tx_done_cb(void);
 
@@ -36,5 +42,8 @@ private:
 
     void card_error_handler(String msg);
 
+    bool crete_new_file(void);
     bool write_to_file(uint8_t buffer[512]);
+
+    static void before_log(Print* output);
 };
