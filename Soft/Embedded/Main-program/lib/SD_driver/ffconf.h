@@ -246,7 +246,7 @@
 / System Configurations
 /---------------------------------------------------------------------------*/
 
-#define _FS_TINY  0
+#define _FS_TINY  1
 /* This option switches tiny buffer configuration. (0:Normal or 1:Tiny)
 /  At the tiny configuration, size of file object (FIL) is reduced _MAX_SS bytes.
 /  Instead of private sector buffer eliminated from the file object, common sector
@@ -260,9 +260,9 @@
 
 
 #define _FS_NORTC 1
-#define _NORTC_MON  1
-#define _NORTC_MDAY 1
-#define _NORTC_YEAR 2016
+#define _NORTC_MON  12
+#define _NORTC_MDAY 31
+#define _NORTC_YEAR 2020
 /* The option _FS_NORTC switches timestamp functiton. If the system does not have
 /  any RTC function or valid timestamp is not needed, set _FS_NORTC = 1 to disable
 /  the timestamp function. All objects modified by FatFs will have a fixed timestamp

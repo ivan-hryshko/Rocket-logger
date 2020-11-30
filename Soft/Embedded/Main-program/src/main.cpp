@@ -31,11 +31,11 @@ void setup()
     // Wire.setSCL(PB10);
     Serial.begin(921600); // Open serial communications and wait for port to open:
     main_log.begin(MAIN_LOG_LEVEL, &Serial);
-    main_log.notice("Waiting for monitor open\n");
-    while (!Serial)
-    {
-        ; // wait for serial port to connect.
-    }
+    // main_log.notice("Waiting for monitor open\n");
+    // while (!Serial)
+    // {
+    //     ; // wait for serial port to connect.
+    // }
 
 
     main_log.notice("Logger start\n");
@@ -108,6 +108,7 @@ typedef struct __attribute__((packed))
     uint8_t num;          // 1 byte
     uint32_t micros;      // 4 bytes
     uint8_t batt_voltage; // 1 byte
+
     struct
     {
         bool bmp_data:1;
@@ -154,7 +155,7 @@ void loop()
 
     if (start_time - last_measure_time >= MAIN_PERIOD)
     {
-        measured_values_t current_meas;
+        static measured_values_t current_meas;
         last_measure_time += MAIN_PERIOD;
 
         current_meas.num = measure_num++;
@@ -191,8 +192,8 @@ void loop()
             // Serial.print(bmp_temp);
             // Serial.print(" ");
             // Serial.println(bmp_pressure);
-            current_meas.bmp.temp = bmp_temp*10;
-            current_meas.bmp.press = bmp_pressure*10;
+            current_meas.bmp.temp = bmp_temp*10U;
+            current_meas.bmp.press = bmp_pressure*10U;
             current_meas.flags.bmp_data = true;
         }
         else
@@ -201,17 +202,14 @@ void loop()
         }
 
         uint32_t bmp_time = micros();
-        // for (uint8_t j = 0; j < sizeof(current_meas); j++)
-        // {
-        //     Serial.print(((uint8_t *)(&current_meas))[j], HEX);
-        //     Serial.print(' ');
-        // }
-        // Serial.println();
+
         record_file.write(&current_meas, sizeof(current_meas));
-        // uint32_t sd_write_time = micros();
-        // if ((sd_write_time - start_time) > 1500)
-        // {
-        //     main_log.warning("Long main cycle mpu:%dus\tpres:%dus\tsd:%dus\ttotal:%dus\n", (mpu_time - start_time), (bmp_time - mpu_time), (sd_write_time - bmp_time), (sd_write_time - start_time));
-        // }
+
+        uint32_t sd_write_time = micros();
+
+        if ((sd_write_time - start_time) > 1500)
+        {
+            main_log.warning("Long main cycle mpu:%dus\tpres:%dus\tsd:%dus\ttotal:%dus\n", (mpu_time - start_time), (bmp_time - mpu_time), (sd_write_time - bmp_time), (sd_write_time - start_time));
+        }
     }
 }

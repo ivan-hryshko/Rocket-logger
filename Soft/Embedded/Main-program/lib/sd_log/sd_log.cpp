@@ -68,10 +68,7 @@ bool SD_log::init(void)
         return (false);
     }
 
-    uint8_t buff[SD_CARD_SECTOR_SIZE];
-    memset(buff, 0, sizeof(buff));
-    strcpy(reinterpret_cast<char*>(buff), FILE_HEADER);
-    write_to_file(buff);
+    write_to_file(const_cast<uint8_t*>(file_header));
     // delay(200);
 
     log.trace("SD card inited\n");
@@ -103,7 +100,21 @@ uint16_t SD_log::get_next_file_index(void)
 
 String SD_log::get_full_file_name (uint16_t file_index, uint16_t file_part_num)
 {
-    String full_file_name = String(FILENAME) + '_' + String(file_index) + '_' + String (file_part_num) + ".bin";
+    char seq_num [4];
+    char part_num [5];
+    String full_file_name;
+
+    if (file_index < 1000 && file_part_num < 10000)
+    {
+        snprintf(seq_num, sizeof(seq_num), "%03d", file_index);
+        snprintf(part_num, sizeof(part_num), "%04d", file_part_num);
+        full_file_name = String(seq_num) + '_' + String (part_num) + ".bin";
+    }
+    else
+    {
+        full_file_name = "no_space.bin";
+    }
+    
     return (full_file_name);
 }
 

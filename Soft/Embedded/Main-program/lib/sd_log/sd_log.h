@@ -4,20 +4,21 @@
 #include "ArduinoLog.h"
 
 #ifndef SD_LOG_LEVEL
-#define SD_LOG_LEVEL LOG_LEVEL_NOTICE
+#define SD_LOG_LEVEL LOG_LEVEL_ERROR
 #endif // SD_LOG_LEVEL
 
-#define FILENAME "log"  // index and ".bin" file extension will be added
+// #define FILENAME "log"  // index and ".bin" file extension will be added
 #define FILE_SIZE   (1UL * 1024UL * 1024UL)    // in bytes
-#define FILE_HEADER "This is file header"
 
 #define BUFFER_SIZE 10  // number of elements in output buffer (each 512 bytes)
 
-#define SD_CARD_SECTOR_SIZE 512
+#define SD_CARD_SECTOR_SIZE     _MIN_SS
 
 template <typename T, size_t N> struct alignas(4) aligned_array : public std::array<T,N> {};
 
 typedef aligned_array<uint8_t, SD_CARD_SECTOR_SIZE> sd_block_t;
+
+const uint8_t file_header alignas(4) [SD_CARD_SECTOR_SIZE] = "This is file header";
 
 class SD_log
 {
