@@ -1,5 +1,5 @@
 #include "ff_gen_drv.h"
-#include <queue> // std::queue
+#include "CircularBuffer.h"
 #include <array>
 #include "ArduinoLog.h"
 
@@ -15,7 +15,9 @@
 
 #define SD_CARD_SECTOR_SIZE 512
 
-typedef std::array<uint8_t, SD_CARD_SECTOR_SIZE> block_512_t;
+template <typename T, size_t N> struct alignas(4) aligned_array : public std::array<T,N> {};
+
+typedef aligned_array<uint8_t, SD_CARD_SECTOR_SIZE> sd_block_t;
 
 class SD_log
 {
@@ -30,7 +32,7 @@ private:
     bool file_opened;
     char SDPath[4]; // SD card logical drive path
     FATFS SDFatFs;  /* File system object for SD card logical drive */
-    std::queue<block_512_t> write_buff;
+    CircularBuffer<sd_block_t, BUFFER_SIZE> write_buff;
 
     uint16_t file_index;    // used in file name (first number)
     uint16_t file_part_num; // used in file name (second number)

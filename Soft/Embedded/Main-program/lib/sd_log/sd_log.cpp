@@ -68,7 +68,8 @@ bool SD_log::init(void)
         return (false);
     }
 
-    uint8_t buff[SD_CARD_SECTOR_SIZE] = {0};
+    uint8_t buff[SD_CARD_SECTOR_SIZE];
+    memset(buff, 0, sizeof(buff));
     strcpy(reinterpret_cast<char*>(buff), FILE_HEADER);
     write_to_file(buff);
     // delay(200);
@@ -110,10 +111,10 @@ String SD_log::get_full_file_name (uint16_t file_index, uint16_t file_part_num)
 void SD_log::tx_done_cb(void)
 {
     log.verbose("tx_done\n");
-    if (write_buff.empty() == false)
+    if (write_buff.isEmpty() == false)
     {
         log.trace("Sending from buffer (%d)\n", write_buff.size());
-        if (write_to_file(write_buff.front().data()))
+        if (write_to_file(write_buff.first().data()))
         {
             write_buff.pop();
         }
@@ -128,7 +129,7 @@ void SD_log::before_log(Print* output)
 
 void SD_log::write(void *data, size_t size)
 {
-    static block_512_t buffer;
+    static sd_block_t buffer;
     static uint16_t buffer_pos = 0;
 
     if (buffer_pos + size > buffer.max_size())
@@ -136,7 +137,7 @@ void SD_log::write(void *data, size_t size)
         log.warning("not aligned data - skipped (%d, %d, %d)\n", buffer_pos, size, buffer.max_size());
         return;
     }
-    if (write_buff.size() >= BUFFER_SIZE)
+    if (write_buff.isFull())
     {
         log.warning("Buffer is full, data lost\n");
         return;
@@ -155,7 +156,7 @@ void SD_log::write(void *data, size_t size)
         uint32_t start_time = micros();
         buffer_pos = 0;
         noInterrupts();
-        if (write_buff.empty())
+        if (write_buff.isEmpty())
         {
             interrupts();
             if (write_to_file(buffer.data()))
@@ -266,6 +267,11 @@ bool SD_log::write_to_file(uint8_t buffer[SD_CARD_SECTOR_SIZE])
     }
 
     UINT written_len = 0;
+    if ((reinterpret_cast<uint32_t>(buffer) % 4) != 0)
+    {
+       card_error_handler("buffer not aligned!!!\n");
+    }
+
     status = f_write(&file_obj, buffer, SD_CARD_SECTOR_SIZE, &written_len);
     if (status == FR_OK)
     {
