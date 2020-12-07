@@ -1,6 +1,7 @@
 from os import listdir
 from os.path import isfile, join
 import sys
+import csv
 
 BUFF_SETUP=[
 #   size  +   *   sign   name
@@ -57,21 +58,24 @@ def read_version (input_data:bytes):
 def read_file_pack (fileList: list, tag):
     buff_counter = 0
     print("start decode: " + tag)
-    for fileName in fileList:
-        with open(FILE_FOLDER_PATH+"/"+fileName,"rb")as bin_file:
-            if ("_0000.BIN" in fileName):
-                print(read_version(bin_file.read(512)))
-            while (byte := bin_file.read(BUFF_SETUP[buff_counter][0])):
-                int_data = int.from_bytes(byte, byteorder = 'little', signed=BUFF_SETUP[buff_counter][3])
-                buff[buff_counter] = int ((int_data + BUFF_SETUP[buff_counter][1]) * BUFF_SETUP[buff_counter][2])
-                buff_counter +=1
-                if buff_counter >= MAX_BUFF_IN_PACK:
-                    buff_counter = 0
-                    # print_buff_console() 
+    with open(FILE_FOLDER_PATH + "/" + tag + ".csv", mode='w', newline='') as csv_file:
+        writer = csv.writer(csv_file)
+        for fileName in fileList:
+            with open(FILE_FOLDER_PATH+"/"+fileName,"rb")as bin_file:
+                if ("_0000.BIN" in fileName):
+                    print(read_version(bin_file.read(512)))
+                # print ([i[4] for i in BUFF_SETUP], end ='')
+                writer.writerow([i[4] for i in BUFF_SETUP])
+                while (byte := bin_file.read(BUFF_SETUP[buff_counter][0])):
+                    int_data = int.from_bytes(byte, byteorder = 'little', signed=BUFF_SETUP[buff_counter][3])
+                    buff[buff_counter] = int ((int_data + BUFF_SETUP[buff_counter][1]) * BUFF_SETUP[buff_counter][2])
+                    buff_counter +=1
+                    if buff_counter >= MAX_BUFF_IN_PACK:
+                        buff_counter = 0
+                        writer.writerow(buff)
+                        # print_buff_console() 
 
     print("end decode  : " + tag + "\n")
-# for num in filepack:
-#     read_file_pack (filepack[num],num)
-#     # print_buff_console()
-#     # break
-read_file_pack (filepack["006"],"006")
+for num in filepack:
+    read_file_pack (filepack[num],num)
+    

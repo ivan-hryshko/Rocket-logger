@@ -1,5 +1,5 @@
 # FILE_NAME_INPUT = "input_data.bin"
-FILE_NAME_INPUT = "test_log/014_0000.BIN"
+FILE_NAME_INPUT = "test_logs/000_0000.BIN"
 BUFF_SETUP=[
 #   size  +   *   sign   name
     [1,   0,  1,  False, "num"],
@@ -27,7 +27,8 @@ buff = [None] * MAX_BUFF_IN_PACK
 def print_buff_console ():
     for buf in buff:
         int_data = buf
-        print("{0:>12}".format(int_data),end = ' ')
+        print("{0:>9}".format(int_data),end = ' ')
+    print()
 
 
 with open(FILE_NAME_INPUT,"rb")as bin_file:
