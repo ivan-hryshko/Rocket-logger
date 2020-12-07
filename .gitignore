@@ -8,6 +8,8 @@ debug.log
 **/.vscode/
 Soft/Embedded/Src/STM-logger/.vscode/extensions.json
 Soft/Embedded/Src/STM-logger/.vscode/extensions.json
+Soft/Data_processing/test_logs/*
+Soft/Data_processing/__pycache__/*
 PCB/PCB.err
 PCB/PCB.PcbDoc.htm
 PCB/PCB.step
