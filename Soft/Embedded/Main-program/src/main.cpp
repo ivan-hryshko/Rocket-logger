@@ -7,29 +7,100 @@
  * SD card
  */
 
+#include <string.h>
+#include "Wire.h"
 #include "Arduino.h"
 #include "sd_log.h"
 #include "MPU9250.h"
 #include "BMP280_DEV.h"
 #include "ArduinoLog.h"
-#include <string.h>
-#include <Wire.h>
+#include "pins.h"
+#include "I2CScanner.h"
 
 #define MAIN_LOG_LEVEL LOG_LEVEL_NOTICE
 
 #define MAIN_PERIOD 1000
 
 static BMP280_DEV bmp; // use I2C interface
-static MPU9250 MPU(Wire, 0x68);
+static MPU9250 mpu(Wire, 0x68);
 static Logging main_log;
 static SD_log record_file;
+static I2CScanner scanner;
 
+void beep (void)
+{
+    digitalWrite(BOOZER_PIN, HIGH);
+    delay(50);
+    digitalWrite(BOOZER_PIN, LOW);
+}
+
+enum class sensor_type {
+    BMP,
+    MPU
+};
+
+void i2c_device_init_fail (String string, enum sensor_type sensor)
+{
+    const uint32_t speeds [] = {50, 100, 200, 400};
+    uint8_t n = 0;
+    bool init_done = false;
+    while (init_done == false)
+    {
+        main_log.fatal(string.c_str());
+        main_log.notice("Set speed %d: %dk\n", n, speeds[n]);
+        Wire.setClock(speeds[n] * 1000);
+        scanner.Scan();
+
+        main_log.notice("Trying init again...\n");
+        switch (sensor)
+        {
+        case sensor_type::BMP:
+        {
+            uint8_t bmp_init_status = bmp.begin(NORMAL_MODE, BMP280_I2C_ADDR);
+            if (bmp_init_status != 1)
+            {
+                main_log.warning("BMP init error\n");
+                init_done = false;
+            }
+            else
+            {
+                init_done = true;
+            }
+            break;
+        }
+
+        case sensor_type::MPU:
+            int mpu_init_status = mpu.begin();
+            if (mpu_init_status != 0)
+            {
+                main_log.warning("MPU init error: %d\n", mpu_init_status);
+                init_done = false;
+            }
+            else
+            {
+                init_done = true;
+            }
+            break;
+        }
+
+        digitalWrite(BRIGHT_LED_PIN, HIGH);
+        delay(100);
+        digitalWrite(BRIGHT_LED_PIN, LOW);
+        n = (n + 1) % (sizeof(speeds)/sizeof(speeds[0]));
+
+        delay(500);
+    }
+
+    main_log.notice("Senspr %d init success\n", sensor);
+}
 
 void setup()
 {
     // Wire.setSDA(PB11);
     // Wire.setSCL(PB10);
     Serial.begin(921600); // Open serial communications and wait for port to open:
+    pinMode(BRIGHT_LED_PIN, OUTPUT);
+    pinMode(BOOZER_PIN, OUTPUT);
     main_log.begin(MAIN_LOG_LEVEL, &Serial);
     // main_log.notice("Waiting for monitor open\n");
     // while (!Serial)
@@ -37,6 +108,7 @@ void setup()
     //     ; // wait for serial port to connect.
     // }
 
+    beep();
 
     main_log.notice("Logger start\n");
     if (record_file.init())
@@ -45,60 +117,62 @@ void setup()
     }
     else
     {
-        main_log.fatal("record file create fail");
         while (1)
         {
+            main_log.fatal("record file create fail\n");
+            delay(1000);
         }
     }
 
+    beep();
+
     Wire.begin((uint8_t)PB11, (uint8_t)PB10);
-    int status = MPU.begin();
-    if (status < 0)
-    {
-        main_log.fatal("MPU init fail: %d", status);
-        while (1)
-        {
-        }
-    }
-    else
-    {
-        MPU.setAccelRange(MPU9250::ACCEL_RANGE_16G);
-        MPU.setGyroRange(MPU9250::GYRO_RANGE_2000DPS);
-        MPU.setSrd(0);
-        // MPU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ);
-        // MPU.enableDataReadyInterrupt();
-        main_log.notice("MPU inited\n");
-    }
+
+    scanner.Init();
 
     if (bmp.begin(NORMAL_MODE, BMP280_I2C_ADDR) == 0)
     {
-        main_log.fatal(F("Could not find a valid BMP280 sensor, check wiring!"));
-        while (1)
-        {
-        }
+        i2c_device_init_fail("BMP init fail\n", sensor_type::BMP);
     }
-    else
+
+    bmp.setPresOversampling(OVERSAMPLING_X1);
+    bmp.setTempOversampling(OVERSAMPLING_X1);
+    bmp.setIIRFilter(IIR_FILTER_OFF);
+    bmp.setTimeStandby(TIME_STANDBY_05MS);
+    Wire.setClock(400000);
+
+    //reset sensor to default parameters.
+    // bmp.resetToDefaults();
+
+    bmp.startNormalConversion();
+
+    main_log.notice("BMP inited\n");
+
+    delay(200);
+
+    beep();
+
+    int status = mpu.begin();
+    if (status < 0)
     {
-        bmp.setPresOversampling(OVERSAMPLING_X1);
-        bmp.setTempOversampling(OVERSAMPLING_X1);
-        bmp.setIIRFilter(IIR_FILTER_OFF);
-        bmp.setTimeStandby(TIME_STANDBY_05MS);
-        Wire.setClock(400000);
-
-        //reset sensor to default parameters.
-        // bmp.resetToDefaults();
-
-        bmp.startNormalConversion();
-
-        main_log.notice("BMP inited\n");
+        i2c_device_init_fail(String ("MPU init fail: ") + status + '\n', sensor_type::MPU);
     }
 
-    analogReadResolution(8);
+    mpu.setAccelRange(MPU9250::ACCEL_RANGE_16G);
+    mpu.setGyroRange(MPU9250::GYRO_RANGE_2000DPS);
+    mpu.setSrd(0);
+    // mpu.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ);
+    // mpu.enableDataReadyInterrupt();
+    main_log.notice("MPU inited\n");
 
-    pinMode(PB4, OUTPUT);
-    digitalWrite(PB4, HIGH);
-    delay(50);
-    digitalWrite(PB4, LOW);
+
+    // analogReadResolution(8);
+
+    digitalWrite(BRIGHT_LED_PIN, HIGH);
+    delay(100);
+    digitalWrite(BRIGHT_LED_PIN, LOW);
+
+    beep();
 
     main_log.notice("init done\n");
 }
@@ -151,6 +225,8 @@ void loop()
     static uint8_t measure_num = 0;
 
     uint32_t start_time = micros();
+    static uint32_t boot_timestamp = start_time;
+    uint32_t time_to_write = start_time - boot_timestamp;
     static uint32_t last_measure_time = start_time - MAIN_PERIOD;
 
     if (start_time - last_measure_time >= MAIN_PERIOD)
@@ -159,23 +235,23 @@ void loop()
         last_measure_time += MAIN_PERIOD;
 
         current_meas.num = measure_num++;
-        current_meas.micros = start_time;
+        current_meas.micros = time_to_write;
 
-        if (MPU.readSensor() > 0)
+        if (mpu.readSensor() > 0)
         {
-            current_meas.mpu.temp = MPU._tcounts;
+            current_meas.mpu.temp = mpu._tcounts;
 
-            current_meas.mpu.acc_x = MPU._axcounts;
-            current_meas.mpu.acc_y = MPU._aycounts;
-            current_meas.mpu.acc_z = MPU._azcounts;
+            current_meas.mpu.acc_x = mpu._axcounts;
+            current_meas.mpu.acc_y = mpu._aycounts;
+            current_meas.mpu.acc_z = mpu._azcounts;
 
-            current_meas.mpu.gyr_x = MPU._gxcounts;
-            current_meas.mpu.gyr_y = MPU._gycounts;
-            current_meas.mpu.gyr_z = MPU._gzcounts;
+            current_meas.mpu.gyr_x = mpu._gxcounts;
+            current_meas.mpu.gyr_y = mpu._gycounts;
+            current_meas.mpu.gyr_z = mpu._gzcounts;
 
-            current_meas.mpu.mag_x = MPU._hxcounts;
-            current_meas.mpu.mag_y = MPU._hycounts;
-            current_meas.mpu.mag_z = MPU._hzcounts;
+            current_meas.mpu.mag_x = mpu._hxcounts;
+            current_meas.mpu.mag_y = mpu._hycounts;
+            current_meas.mpu.mag_z = mpu._hzcounts;
 
             current_meas.flags.mpu_data = true;
         }
